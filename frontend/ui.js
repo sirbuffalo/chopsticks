@@ -1,41 +1,48 @@
-const BANNER_TITLES = {
-  "user-win": "You win!",
-  "bot-win": "You lose.",
-  draw: "Draw.",
-};
-
 export function createUi() {
+  const { Toastify } = window;
+  const game = document.querySelector(".game");
   const hands = Array.from(document.querySelectorAll(".hand"));
   const rearrangeButton = document.querySelector(".rearrange");
   const cancelButton = document.querySelector(".rearrange-cancel");
   const actions = document.querySelector(".rearrange-actions");
-  const bannerWrapper = document.querySelector(".banner-wrapper");
-  const bannerTitle = document.querySelector(".banner-title");
-  const playAgainButton = document.querySelector(".play-again");
-  const toastEl = document.querySelector(".toast");
+  const turnIndicator = document.querySelector(".turn-indicator");
+  const startOverlay = document.querySelector(".start-overlay");
+  const startFirstButton = document.querySelector(".start-first");
+  const startSecondButton = document.querySelector(".start-second");
   const rulesButton = document.querySelector(".rules-open");
   const rulesDialog = document.querySelector(".rules-dialog");
   const rulesCloseButton = document.querySelector(".rules-close");
-  let toastTimer = null;
+  let activeToast = null;
 
-  function showToast(message) {
-    toastEl.textContent = message;
-    toastEl.classList.add("visible");
-    if (toastTimer !== null) {
-      clearTimeout(toastTimer);
+  function showToast(message, options = {}) {
+    if (activeToast !== null) {
+      activeToast.hideToast();
     }
-    toastTimer = window.setTimeout(() => {
-      toastEl.classList.remove("visible");
-      toastTimer = null;
-    }, 2500);
+
+    const toast = Toastify({
+      text: message,
+      duration: options.duration ?? 2500,
+      gravity: "bottom",
+      position: "center",
+      className: ["game-toast", options.className].filter(Boolean).join(" "),
+      node: options.node,
+      stopOnFocus: false,
+      onClick: Object.hasOwn(options, "onClick") ? options.onClick : clearToast,
+      callback() {
+        if (activeToast === toast) {
+          activeToast = null;
+        }
+      },
+    });
+    activeToast = toast;
+    activeToast.showToast();
   }
 
   function clearToast() {
-    if (toastTimer !== null) {
-      clearTimeout(toastTimer);
-      toastTimer = null;
+    if (activeToast !== null) {
+      activeToast.hideToast();
+      activeToast = null;
     }
-    toastEl.classList.remove("visible");
   }
 
   function openRules() {
@@ -142,6 +149,10 @@ export function createUi() {
     gameOver,
     issue,
     selectedHand,
+    legalTargets,
+    turnText,
+    choosingStart,
+    startChoiceClosing,
   }) {
     const gameIsOver = gameOver !== null;
     const canAct = !gameIsOver && userTurnActive && !rearranging;
@@ -152,8 +163,7 @@ export function createUi() {
       const hand = Number(handEl.dataset.hand);
       const value = state[person][hand];
       const editable = rearranging && person === "user";
-      const inactiveUserHand =
-        person === "user" && (!userTurnActive || gameIsOver);
+      const inactiveUserHand = person === "user" && gameIsOver;
       const userHandCanAttack = canAct && person === "user" && value > 0;
       const targetCanBeChosen =
         canAct && hasSelectedHand && person === "opponent" && value > 0;
@@ -172,6 +182,10 @@ export function createUi() {
         "drag-source",
         userHandCanAttack && hand === selectedHand,
       );
+      handEl.classList.toggle(
+        "legal-target",
+        person === "opponent" && legalTargets.has(hand),
+      );
       handEl.setAttribute("aria-label", `${person} hand ${hand + 1}: ${value}`);
     }
 
@@ -189,25 +203,32 @@ export function createUi() {
       : !userTurnActive || gameIsOver;
     cancelButton.disabled = !rearranging;
     actions.classList.toggle("editing", rearranging);
-    actions.classList.toggle(
-      "inactive",
-      (!userTurnActive || gameIsOver) && !rearranging,
+    actions.classList.toggle("inactive", gameIsOver && !rearranging);
+    turnIndicator.textContent = turnText;
+    turnIndicator.hidden = turnText.length === 0;
+    turnIndicator.classList.toggle("game-over", gameIsOver);
+    turnIndicator.tabIndex = gameIsOver ? 0 : -1;
+    turnIndicator.setAttribute(
+      "aria-label",
+      gameIsOver ? `${turnText}. Play again.` : turnText,
     );
+    const startOverlayVisible = choosingStart || startChoiceClosing;
+    startOverlay.hidden = !startOverlayVisible;
+    startOverlay.classList.toggle("visible", startOverlayVisible);
+    startOverlay.classList.toggle("closing", startChoiceClosing);
+    game.classList.toggle("start-active", startOverlayVisible);
 
-    if (gameIsOver) {
-      bannerTitle.textContent = BANNER_TITLES[gameOver];
-      bannerWrapper.hidden = false;
-      playAgainButton.focus();
-    } else {
-      bannerWrapper.hidden = true;
-    }
+    return gameIsOver;
   }
 
   return {
+    game,
     hands,
     rearrangeButton,
     cancelButton,
-    playAgainButton,
+    turnIndicator,
+    startFirstButton,
+    startSecondButton,
     rulesButton,
     rulesCloseButton,
     rulesDialog,

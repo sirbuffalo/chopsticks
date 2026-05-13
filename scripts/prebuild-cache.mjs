@@ -184,7 +184,13 @@ function explorePlayerTurn(state, depth) {
   }
 }
 
-explorePlayerTurn({ user: [1, 1], opponent: [1, 1] }, 0);
+const initialState = { user: [1, 1], opponent: [1, 1] };
+
+logProgress("seeding cache from user-first opening", { force: true });
+explorePlayerTurn(initialState, 0);
+
+logProgress("seeding cache from bot-first opening", { force: true });
+explorePlayerTurn(botReply(initialState), 1);
 
 const entries = [...cache.entries()].sort(([left], [right]) =>
   left.localeCompare(right),

@@ -23,11 +23,24 @@ let selectedHand = null;
 let rearranging = false;
 let rearrangeTotal = 0;
 let rearrangeStart = [1, 1];
-let userTurnActive = true;
+let userTurnActive = false;
 let gameOver = null;
 let keyboardMode = false;
+let choosingStart = true;
+let startChoiceClosing = false;
 
 const REPETITION_MESSAGE = "That position has already appeared twice.";
+const ILLEGAL_MOVE_MESSAGES = {
+  "no-attacker": "You need to use a live hand.",
+  dead: "You cannot tap a dead hand.",
+  unchanged: "Rearrange has to change your hands.",
+  "would-repeat": REPETITION_MESSAGE,
+};
+const TURN_INDICATOR_GAME_OVER_TEXT = {
+  "user-win": "You Win. Tap to Play Again.",
+  "bot-win": "You Lose. Tap to Play Again.",
+  draw: "Draw. Tap to Play Again.",
+};
 const ACTIVATION_KEYS = new Set(["Enter", " "]);
 
 const repetitionCounts = new Map();
@@ -68,6 +81,39 @@ function preserveVisiblePairOrder(previous, next) {
 }
 
 function render() {
+  const legalTargets = new Set();
+
+  if (
+    !choosingStart &&
+    !startChoiceClosing &&
+    !rearranging &&
+    !isGameOver() &&
+    userTurnActive &&
+    selectedHand !== null
+  ) {
+    for (let hand = 0; hand < 2; hand += 1) {
+      if (hitIssue(selectedHand, hand) === "none") {
+        legalTargets.add(hand);
+      }
+    }
+  }
+
+  let turnText = "";
+  if (gameOver !== null) {
+    turnText = TURN_INDICATOR_GAME_OVER_TEXT[gameOver];
+  } else if (choosingStart) {
+    turnText = "";
+  } else if (startChoiceClosing) {
+    turnText = "";
+  } else if (rearranging) {
+    turnText = "Rearrange your hands";
+  } else if (userTurnActive) {
+    turnText =
+      selectedHand === null ? "Your turn" : "Choose a highlighted target";
+  } else {
+    turnText = "Bot thinking";
+  }
+
   ui.render({
     state,
     rearranging,
@@ -75,12 +121,64 @@ function render() {
     gameOver,
     issue: rearrangeIssue(),
     selectedHand,
+    legalTargets,
+    turnText,
+    choosingStart,
+    startChoiceClosing,
   });
+}
+
+function showIllegalMove(issue) {
+  const message = ILLEGAL_MOVE_MESSAGES[issue];
+
+  if (message !== undefined) {
+    ui.showToast(message);
+  }
+}
+
+function finishGame(result) {
+  gameOver = result;
+  render();
+}
+
+function beginStartChoice() {
+  choosingStart = true;
+  startChoiceClosing = false;
+  userTurnActive = false;
+  render();
+}
+
+function startGame(userGoesFirst) {
+  if (!choosingStart || startChoiceClosing) {
+    return;
+  }
+
+  startChoiceClosing = true;
+  render();
+
+  window.setTimeout(() => {
+    choosingStart = false;
+    startChoiceClosing = false;
+
+    if (userGoesFirst) {
+      userTurnActive = true;
+      recordPosition("user");
+      render();
+      return;
+    }
+
+    userTurnActive = false;
+    recordPosition("bot");
+    render();
+    window.setTimeout(botTurn, 250);
+  }, 220);
 }
 
 function canDrag(handEl) {
   return (
     !isGameOver() &&
+    !choosingStart &&
+    !startChoiceClosing &&
     userTurnActive &&
     !rearranging &&
     handEl.dataset.person === "user" &&
@@ -89,7 +187,13 @@ function canDrag(handEl) {
 }
 
 function canDrop(targetEl) {
-  if (isGameOver() || !userTurnActive || selectedHand === null) {
+  if (
+    isGameOver() ||
+    choosingStart ||
+    startChoiceClosing ||
+    !userTurnActive ||
+    selectedHand === null
+  ) {
     return false;
   }
   if (targetEl.dataset.person !== "opponent") {
@@ -127,7 +231,7 @@ function exitKeyboardMode() {
 }
 
 function activateHand(handEl, { moveFocus = false } = {}) {
-  if (rearranging) {
+  if (choosingStart || startChoiceClosing || rearranging) {
     return;
   }
 
@@ -158,14 +262,12 @@ function activateHand(handEl, { moveFocus = false } = {}) {
   }
 
   if (person === "opponent" && selectedHand !== null) {
-    if (canDrop(handEl)) {
+    const issue = hitIssue(selectedHand, Number(handEl.dataset.hand));
+
+    if (issue === "none") {
       hitOpponent(handEl);
-    } else if (
-      !isGameOver() &&
-      userTurnActive &&
-      hitIssue(selectedHand, Number(handEl.dataset.hand)) === "would-repeat"
-    ) {
-      ui.showToast(REPETITION_MESSAGE);
+    } else if (!isGameOver() && userTurnActive) {
+      showIllegalMove(issue);
     }
   }
 }
@@ -175,8 +277,7 @@ function finishUserTurn() {
   clearDragState();
 
   if (!hasLiveHands(state, "opponent")) {
-    gameOver = "user-win";
-    render();
+    finishGame("user-win");
     return;
   }
 
@@ -189,8 +290,7 @@ async function botTurn() {
   const next = await botController.nextMove();
 
   if (next === null) {
-    gameOver = "draw";
-    render();
+    finishGame("draw");
     return;
   }
 
@@ -206,9 +306,11 @@ async function botTurn() {
   }
 
   if (!hasLiveHands(state, "user")) {
-    gameOver = "bot-win";
+    finishGame("bot-win");
+    return;
   } else if (!hasLegalUserMove(state, wouldRepeat)) {
-    gameOver = "draw";
+    finishGame("draw");
+    return;
   } else {
     userTurnActive = true;
   }
@@ -220,6 +322,9 @@ async function botTurn() {
 
 function hitOpponent(targetEl) {
   if (!canDrop(targetEl)) {
+    if (!isGameOver() && userTurnActive && selectedHand !== null) {
+      showIllegalMove(hitIssue(selectedHand, Number(targetEl.dataset.hand)));
+    }
     return;
   }
 
@@ -233,7 +338,12 @@ function hitOpponent(targetEl) {
 function toggleRearrange() {
   clearDragState();
 
-  if (isGameOver() || (!userTurnActive && !rearranging)) {
+  if (
+    choosingStart ||
+    startChoiceClosing ||
+    isGameOver() ||
+    (!userTurnActive && !rearranging)
+  ) {
     return;
   }
 
@@ -249,12 +359,13 @@ function toggleRearrange() {
   const issue = rearrangeIssue();
 
   if (issue === "unchanged") {
+    showIllegalMove(issue);
     render();
     return;
   }
 
   if (issue === "would-repeat") {
-    ui.showToast(REPETITION_MESSAGE);
+    showIllegalMove(issue);
     return;
   }
 
@@ -300,15 +411,17 @@ function resetGame() {
   rearranging = false;
   rearrangeTotal = 0;
   rearrangeStart = [1, 1];
-  userTurnActive = true;
+  userTurnActive = false;
   gameOver = null;
   keyboardMode = false;
+  choosingStart = true;
+  startChoiceClosing = false;
   repetitionCounts.clear();
   botController.clearCache();
   ui.clearToast();
   clearDragState();
-  recordPosition("user");
   render();
+  beginStartChoice();
 }
 
 function updateSplitFromEdit(handEl) {
@@ -330,7 +443,13 @@ function updateSplitFromEdit(handEl) {
 
 ui.rearrangeButton.addEventListener("click", toggleRearrange);
 ui.cancelButton.addEventListener("click", cancelRearrange);
-ui.playAgainButton.addEventListener("click", resetGame);
+ui.startFirstButton.addEventListener("click", () => startGame(true));
+ui.startSecondButton.addEventListener("click", () => startGame(false));
+ui.turnIndicator.addEventListener("click", () => {
+  if (isGameOver()) {
+    resetGame();
+  }
+});
 ui.rulesButton.addEventListener("click", ui.openRules);
 ui.rulesCloseButton.addEventListener("click", ui.closeRules);
 ui.rulesDialog.addEventListener("click", (event) => {
@@ -370,7 +489,7 @@ for (const handEl of ui.hands) {
       handEl.dataset.person === "opponent" &&
       hitIssue(selectedHand, Number(handEl.dataset.hand)) === "would-repeat"
     ) {
-      ui.showToast(REPETITION_MESSAGE);
+      showIllegalMove(hitIssue(selectedHand, Number(handEl.dataset.hand)));
     }
   });
 
@@ -468,6 +587,10 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
+  if (choosingStart || startChoiceClosing) {
+    return;
+  }
+
   if (event.key === "Tab" && !rearranging) {
     keyboardMode = true;
   }
@@ -502,12 +625,6 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (event.key === "r" && !rearranging && !ui.rearrangeButton.disabled) {
-    event.preventDefault();
-    toggleRearrange();
-    return;
-  }
-
   if (!rearranging || document.activeElement?.classList.contains("hand")) {
     return;
   }
@@ -521,5 +638,5 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-recordPosition("user");
 render();
+beginStartChoice();

@@ -46,6 +46,7 @@
         <div class="hand" data-person="opponent" data-hand="0">1</div>
         <div class="hand" data-person="opponent" data-hand="1">1</div>
       </div>
+      <div class="turn-indicator" aria-live="polite"></div>
       <div class="player-hands" data-person="user">
         <div class="hand" data-person="user" data-hand="0" draggable="true">
           1
@@ -58,13 +59,15 @@
         <button class="rearrange-cancel" type="button">Cancel</button>
         <button class="rearrange" type="button">Rearrange</button>
       </div>
-      <div class="banner-wrapper" hidden>
-        <div class="banner">
-          <span class="banner-title"></span>
-          <button class="play-again" type="button">Play again</button>
+      <div class="start-overlay" hidden>
+        <div class="start-panel">
+          <div class="start-panel-title">Do you want to go first?</div>
+          <div class="start-panel-actions">
+            <button class="start-first" type="button">Yes</button>
+            <button class="start-second" type="button">No</button>
+          </div>
         </div>
       </div>
-      <div class="toast" aria-live="polite"></div>
       <button class="rules-open" type="button" aria-label="Open rules">
         ?
       </button>
@@ -100,6 +103,7 @@
       </div>
     </dialog>
 
+    <script src="toastify.js"></script>
     <script type="module" src="script.js"></script>
   </body>
 </html>
