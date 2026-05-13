@@ -19,14 +19,16 @@ const state = {
   opponent: [1, 1],
 };
 
-let draggedHand = null;
+let selectedHand = null;
 let rearranging = false;
 let rearrangeTotal = 0;
 let rearrangeStart = [1, 1];
 let userTurnActive = true;
 let gameOver = null;
+let keyboardMode = false;
 
 const REPETITION_MESSAGE = "That position has already appeared twice.";
+const ACTIVATION_KEYS = new Set(["Enter", " "]);
 
 const repetitionCounts = new Map();
 const ui = createUi();
@@ -72,6 +74,7 @@ function render() {
     userTurnActive,
     gameOver,
     issue: rearrangeIssue(),
+    selectedHand,
   });
 }
 
@@ -86,13 +89,13 @@ function canDrag(handEl) {
 }
 
 function canDrop(targetEl) {
-  if (isGameOver() || !userTurnActive || draggedHand === null) {
+  if (isGameOver() || !userTurnActive || selectedHand === null) {
     return false;
   }
   if (targetEl.dataset.person !== "opponent") {
     return false;
   }
-  return hitIssue(draggedHand, Number(targetEl.dataset.hand)) === "none";
+  return hitIssue(selectedHand, Number(targetEl.dataset.hand)) === "none";
 }
 
 function hitIssue(attacker, target) {
@@ -112,8 +115,59 @@ function hitIssue(attacker, target) {
 }
 
 function clearDragState() {
-  draggedHand = null;
+  selectedHand = null;
   ui.clearDragState();
+}
+
+function exitKeyboardMode() {
+  keyboardMode = false;
+  clearDragState();
+  render();
+  ui.blurActiveHand();
+}
+
+function activateHand(handEl, { moveFocus = false } = {}) {
+  if (rearranging) {
+    return;
+  }
+
+  const person = handEl.dataset.person;
+
+  if (person === "user") {
+    if (!canDrag(handEl)) {
+      return;
+    }
+
+    const hand = Number(handEl.dataset.hand);
+
+    if (selectedHand === hand) {
+      clearDragState();
+      render();
+      return;
+    }
+
+    selectedHand = hand;
+    render();
+
+    if (moveFocus) {
+      keyboardMode = true;
+      ui.focusFirstTargetHand();
+    }
+
+    return;
+  }
+
+  if (person === "opponent" && selectedHand !== null) {
+    if (canDrop(handEl)) {
+      hitOpponent(handEl);
+    } else if (
+      !isGameOver() &&
+      userTurnActive &&
+      hitIssue(selectedHand, Number(handEl.dataset.hand)) === "would-repeat"
+    ) {
+      ui.showToast(REPETITION_MESSAGE);
+    }
+  }
 }
 
 function finishUserTurn() {
@@ -159,6 +213,9 @@ async function botTurn() {
     userTurnActive = true;
   }
   render();
+  if (keyboardMode && userTurnActive) {
+    ui.focusFirstPlayableUserHand();
+  }
 }
 
 function hitOpponent(targetEl) {
@@ -167,7 +224,7 @@ function hitOpponent(targetEl) {
   }
 
   const target = Number(targetEl.dataset.hand);
-  const after = (state.opponent[target] + state.user[draggedHand]) % MODULUS;
+  const after = (state.opponent[target] + state.user[selectedHand]) % MODULUS;
 
   state.opponent[target] = after;
   finishUserTurn();
@@ -239,12 +296,13 @@ function rearrangeIssue() {
 function resetGame() {
   state.user = [1, 1];
   state.opponent = [1, 1];
-  draggedHand = null;
+  selectedHand = null;
   rearranging = false;
   rearrangeTotal = 0;
   rearrangeStart = [1, 1];
   userTurnActive = true;
   gameOver = null;
+  keyboardMode = false;
   repetitionCounts.clear();
   botController.clearCache();
   ui.clearToast();
@@ -281,13 +339,16 @@ for (const handEl of ui.hands) {
       return;
     }
 
-    draggedHand = Number(handEl.dataset.hand);
+    selectedHand = Number(handEl.dataset.hand);
     ui.markDragSource(handEl);
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", String(draggedHand));
+    event.dataTransfer.setData("text/plain", String(selectedHand));
   });
 
-  handEl.addEventListener("dragend", clearDragState);
+  handEl.addEventListener("dragend", () => {
+    clearDragState();
+    render();
+  });
 
   handEl.addEventListener("dragenter", () => {
     if (canDrop(handEl)) {
@@ -298,9 +359,9 @@ for (const handEl of ui.hands) {
     if (
       !isGameOver() &&
       userTurnActive &&
-      draggedHand !== null &&
+      selectedHand !== null &&
       handEl.dataset.person === "opponent" &&
-      hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
+      hitIssue(selectedHand, Number(handEl.dataset.hand)) === "would-repeat"
     ) {
       ui.showToast(REPETITION_MESSAGE);
     }
@@ -325,41 +386,7 @@ for (const handEl of ui.hands) {
   });
 
   handEl.addEventListener("click", () => {
-    if (rearranging) {
-      return;
-    }
-
-    const person = handEl.dataset.person;
-
-    if (person === "user") {
-      if (!canDrag(handEl)) {
-        return;
-      }
-
-      const hand = Number(handEl.dataset.hand);
-
-      if (draggedHand === hand) {
-        clearDragState();
-        return;
-      }
-
-      clearDragState();
-      draggedHand = hand;
-      ui.markDragSource(handEl);
-      return;
-    }
-
-    if (person === "opponent" && draggedHand !== null) {
-      if (canDrop(handEl)) {
-        hitOpponent(handEl);
-      } else if (
-        !isGameOver() &&
-        userTurnActive &&
-        hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
-      ) {
-        ui.showToast(REPETITION_MESSAGE);
-      }
-    }
+    activateHand(handEl);
   });
 
   handEl.addEventListener("input", () => updateSplitFromEdit(handEl));
@@ -372,6 +399,18 @@ for (const handEl of ui.hands) {
 
   handEl.addEventListener("keydown", (event) => {
     if (!rearranging || handEl.dataset.person !== "user") {
+      if (ACTIVATION_KEYS.has(event.key)) {
+        event.preventDefault();
+        keyboardMode = true;
+        activateHand(handEl, { moveFocus: true });
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        keyboardMode = true;
+        ui.focusAdjacentHand(handEl, event.key === "ArrowLeft" ? -1 : 1);
+      } else if (event.key === "Escape" && selectedHand !== null) {
+        event.preventDefault();
+        exitKeyboardMode();
+      }
       return;
     }
 
@@ -418,6 +457,40 @@ for (const handEl of ui.hands) {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Tab" && !rearranging) {
+    keyboardMode = true;
+  }
+
+  const activeHandFocused = document.activeElement?.classList.contains("hand");
+
+  if (
+    (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+    !rearranging &&
+    !activeHandFocused &&
+    !isGameOver() &&
+    userTurnActive
+  ) {
+    event.preventDefault();
+    keyboardMode = true;
+    render();
+    if (event.key === "ArrowLeft") {
+      ui.focusFirstPlayableUserHand();
+    } else {
+      ui.focusLastPlayableUserHand();
+    }
+    return;
+  }
+
+  if (
+    event.key === "Escape" &&
+    !rearranging &&
+    (selectedHand !== null || activeHandFocused)
+  ) {
+    event.preventDefault();
+    exitKeyboardMode();
+    return;
+  }
+
   if (event.key === "r" && !rearranging && !ui.rearrangeButton.disabled) {
     event.preventDefault();
     toggleRearrange();

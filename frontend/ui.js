@@ -42,6 +42,12 @@ export function createUi() {
     }
   }
 
+  function blurActiveHand() {
+    if (document.activeElement?.classList.contains("hand")) {
+      document.activeElement.blur();
+    }
+  }
+
   function markDragSource(handEl) {
     handEl.classList.add("drag-source");
     document.body.classList.add("dragging");
@@ -61,6 +67,38 @@ export function createUi() {
       ?.focus();
   }
 
+  function focusFirstTargetHand() {
+    hands
+      .find((h) => h.dataset.person === "opponent" && h.tabIndex === 0)
+      ?.focus();
+  }
+
+  function focusFirstPlayableUserHand() {
+    hands.find((h) => h.dataset.person === "user" && h.tabIndex === 0)?.focus();
+  }
+
+  function focusLastPlayableUserHand() {
+    hands
+      .findLast((h) => h.dataset.person === "user" && h.tabIndex === 0)
+      ?.focus();
+  }
+
+  function focusAdjacentHand(handEl, direction) {
+    const rowHands = hands.filter(
+      (h) => h.dataset.person === handEl.dataset.person && h.tabIndex === 0,
+    );
+
+    if (rowHands.length < 2) {
+      return;
+    }
+
+    const currentIndex = rowHands.indexOf(handEl);
+    const nextIndex =
+      (currentIndex + direction + rowHands.length) % rowHands.length;
+
+    rowHands[nextIndex].focus();
+  }
+
   function placeCaretAtEnd(element) {
     const range = document.createRange();
     const selection = window.getSelection();
@@ -75,8 +113,17 @@ export function createUi() {
     selection.addRange(range);
   }
 
-  function render({ state, rearranging, userTurnActive, gameOver, issue }) {
+  function render({
+    state,
+    rearranging,
+    userTurnActive,
+    gameOver,
+    issue,
+    selectedHand,
+  }) {
     const gameIsOver = gameOver !== null;
+    const canAct = !gameIsOver && userTurnActive && !rearranging;
+    const hasSelectedHand = selectedHand !== null;
 
     for (const handEl of hands) {
       const person = handEl.dataset.person;
@@ -85,21 +132,33 @@ export function createUi() {
       const editable = rearranging && person === "user";
       const inactiveUserHand =
         person === "user" && (!userTurnActive || gameIsOver);
+      const userHandCanAttack = canAct && person === "user" && value > 0;
+      const targetCanBeChosen =
+        canAct && hasSelectedHand && person === "opponent" && value > 0;
 
       handEl.textContent = value;
-      handEl.draggable =
-        !gameIsOver &&
-        !editable &&
-        userTurnActive &&
-        person === "user" &&
-        value > 0;
+      handEl.draggable = userHandCanAttack;
       handEl.contentEditable = editable ? "true" : "false";
       handEl.spellcheck = false;
+      handEl.tabIndex =
+        editable || userHandCanAttack || targetCanBeChosen ? 0 : -1;
       handEl.classList.toggle("dead", value === 0);
       handEl.classList.toggle("draggable", handEl.draggable);
       handEl.classList.toggle("editing", editable);
       handEl.classList.toggle("inactive", inactiveUserHand);
+      handEl.classList.toggle(
+        "drag-source",
+        userHandCanAttack && hand === selectedHand,
+      );
       handEl.setAttribute("aria-label", `${person} hand ${hand + 1}: ${value}`);
+    }
+
+    document.body.classList.toggle("dragging", canAct && hasSelectedHand);
+    if (
+      document.activeElement?.classList.contains("hand") &&
+      document.activeElement.tabIndex < 0
+    ) {
+      document.activeElement.blur();
     }
 
     rearrangeButton.textContent = rearranging ? "Confirm" : "Rearrange";
@@ -116,6 +175,7 @@ export function createUi() {
     if (gameIsOver) {
       bannerTitle.textContent = BANNER_TITLES[gameOver];
       bannerWrapper.hidden = false;
+      playAgainButton.focus();
     } else {
       bannerWrapper.hidden = true;
     }
@@ -126,9 +186,14 @@ export function createUi() {
     rearrangeButton,
     cancelButton,
     playAgainButton,
+    blurActiveHand,
     clearDragState,
     clearToast,
+    focusAdjacentHand,
+    focusFirstPlayableUserHand,
+    focusFirstTargetHand,
     focusFirstUserHand,
+    focusLastPlayableUserHand,
     markDragSource,
     markDropTarget,
     placeCaretAtEnd,
