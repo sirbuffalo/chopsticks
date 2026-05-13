@@ -2,6 +2,10 @@
 
 Operational context for an agent (Claude, Codex, etc.) working in this repo. Pairs with [README.md](README.md) (human onboarding) and [TODO.md](TODO.md) (suggested work).
 
+## Prerequisites
+
+Run `npm install` (or `npm ci`) before any `npm run …` command, including `lint`, `format:check`, `lint:md`, `test:unit`, and `test:e2e`. The dev tooling (prettier, eslint, markdownlint-cli2, playwright) lives in `devDependencies` and is not vendored — a fresh checkout has no `node_modules/`, and the scripts will fail with "command not found" until it's installed. The Rust build and `./scripts/build-static-wasm.sh` do not need `node_modules` (the build scripts use only Node built-ins), but anything that shells out to a CLI from `devDependencies` does.
+
 ## Repo shape
 
 - [src/lib.rs](src/lib.rs) — Rust solver compiled to `wasm32-unknown-unknown`. Exposes `chopsticks_bot_next_state` and `chopsticks_bot_ranked_next_state` to JS.

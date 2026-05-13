@@ -21,6 +21,14 @@ rustup target add wasm32-unknown-unknown
 
 Without this target, `cargo build` will fail with `error[E0463]: can't find crate for 'std'`.
 
+Install the Node dev dependencies once before running any `npm run …` script (lint, format, tests):
+
+```sh
+npm install
+```
+
+The build script ([`scripts/build-static-wasm.sh`](scripts/build-static-wasm.sh)) itself only uses Node built-ins, so it works without `npm install`, but every other `npm run …` task pulls a CLI from `devDependencies`.
+
 ## Building
 
 To regenerate the static site at [`frontend/`](frontend/), run:
