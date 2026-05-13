@@ -1,3 +1,6 @@
 /target
+/node_modules/
 *.sqlite
 *.sqlite-*
+/playwright-report/
+/test-results/

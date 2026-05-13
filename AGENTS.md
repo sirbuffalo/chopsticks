@@ -70,5 +70,5 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
 - If you touched JS under [frontend/script.js](frontend/script.js) or [scripts/](scripts/): run `npm run format:check` and `npm run lint`; use `npm run format` / `npm run lint:fix` for fixes.
 - If you touched Rust: run `cargo fmt --check` and `cargo test`.
-- If you touched any markdown file: run `npx markdownlint-cli2 "*.md"` and fix any errors.
+- If you touched any markdown file: run `npm run lint:md` and fix any errors.
 - If you start a local web server or any other long-running process for agentic testing, stop it before declaring done. Do not leave software running for the user to clean up.

@@ -4,15 +4,20 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
-    "format": "prettier --write \"frontend/**/*.js\" scripts/",
-    "format:check": "prettier --check \"frontend/**/*.js\" scripts/",
-    "lint": "eslint \"frontend/**/*.js\" scripts/",
-    "lint:fix": "eslint --fix \"frontend/**/*.js\" scripts/"
+    "format": "prettier --write \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
+    "format:check": "prettier --check \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
+    "lint": "eslint \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
+    "lint:md": "markdownlint-cli2 \"*.md\"",
+    "lint:fix": "eslint --fix \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.60.0",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
+    "markdownlint-cli2": "^0.22.1",
     "prettier": "^3.0.0"
   }
 }

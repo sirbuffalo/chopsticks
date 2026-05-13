@@ -9,7 +9,7 @@ The bot is written in Rust and compiled to WebAssembly, shipped as a static asse
 You'll need:
 
 - [Rust](https://www.rust-lang.org/tools/install) (installs `cargo` and `rustup`)
-- [Node.js](https://nodejs.org/) (any recent version; only the built-in runtime is used, no `npm install` needed)
+- [Node.js](https://nodejs.org/) (any recent version)
 
 After installing Rust, add the WebAssembly compilation target:
 
@@ -47,6 +47,20 @@ To run the Rust unit tests (host target, not wasm):
 
 ```sh
 cargo test
+```
+
+To install development dependencies and run the browser smoke and integration tests:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+To run the markdown lint check:
+
+```sh
+npm run lint:md
 ```
 
 ## Deployment
