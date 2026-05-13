@@ -54,7 +54,14 @@ To run the Rust unit tests (host target, not wasm):
 cargo test
 ```
 
-To install development dependencies and run the browser smoke and integration tests:
+To install development dependencies and run the JS unit tests:
+
+```sh
+npm ci
+npm run test:unit
+```
+
+To run the browser smoke and integration tests:
 
 ```sh
 npm ci
