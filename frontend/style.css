@@ -1,5 +1,5 @@
 :root {
-    --grid-size: calc(100vmin / 15);
+    --grid-size: min(calc(100vw / 17), calc(100vh / 20));
 }
 
 body {
@@ -12,13 +12,13 @@ body {
     align-items: center;
     justify-content: center;
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: "Alegreya Sans SC", sans-serif;
 }
 
 .game {
     box-sizing: border-box;
-    width: calc(var(--grid-size) * 13);
-    height: calc(var(--grid-size) * 13);
+    width: calc(var(--grid-size) * 15);
+    height: calc(var(--grid-size) * 18);
 
     border-radius: calc(2 * var(--grid-size));
     padding: var(--grid-size);
@@ -32,21 +32,115 @@ body {
 
 /* each player's area */
 .player-hands {
-    flex: 1;
+    flex: 0 0 calc(var(--grid-size) * 6);
 
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: calc(var(--grid-size) * 6);
     gap: var(--grid-size);
 }
 
 /* the actual hand cards */
 .hand {
+    box-sizing: border-box;
+    border: 0;
     padding: var(--grid-size);
     background-color: #d8c39a;
     border-radius: var(--grid-size);
     font-size: calc(var(--grid-size) * 3);
-    line-height: calc(var(--grid-size) * 3);
-    text-align: center;
     color: #2e2a23;
     z-index: 1;
+    cursor: default;
+    font-family: inherit;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    text-align: center;
+    transition: background-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease, transform 120ms ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.hand.draggable {
+    cursor: grab;
+}
+
+.hand.draggable:active {
+    cursor: grabbing;
+}
+
+.hand.dead {
+    opacity: 0.45;
+}
+
+.hand.inactive {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.hand.drag-source {
+    opacity: 0.65;
+    transform: scale(0.98);
+}
+
+.hand.editing {
+    cursor: text;
+}
+
+.hand:focus {
+    outline: none;
+}
+
+.dragging .hand[data-person="opponent"]:not(.dead) {
+    box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.08) #2e2a23;
+}
+
+.hand.drop-target {
+    background-color: #ead9b2;
+    box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.14) #2e2a23;
+}
+
+.rearrange-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--grid-size);
+}
+
+.rearrange-actions.editing {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.rearrange,
+.rearrange-cancel {
+    height: calc(var(--grid-size) * 2);
+    border: 0;
+    border-radius: var(--grid-size);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: calc(var(--grid-size) * 1);
+    display: grid;
+    place-items: center;
+    line-height: 1;
+}
+
+.rearrange {
+    background-color: #2e2a23;
+    color: #ead9b2;
+}
+
+.rearrange-cancel {
+    display: none;
+    background-color: #d8c39a;
+    color: #2e2a23;
+}
+
+.rearrange:disabled,
+.rearrange-cancel:disabled,
+.rearrange-actions.inactive {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.rearrange-actions.editing .rearrange-cancel {
+    display: grid;
 }
