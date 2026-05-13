@@ -137,6 +137,7 @@ function showIllegalMove(issue) {
 function finishGame(result) {
   gameOver = result;
   render();
+  ui.focusPlayAgainPrompt();
 }
 
 function beginStartChoice() {
@@ -157,6 +158,7 @@ function startGame(userGoesFirst) {
   window.setTimeout(() => {
     choosingStart = false;
     startChoiceClosing = false;
+    ui.blurStartChoice();
 
     if (userGoesFirst) {
       userTurnActive = true;
@@ -585,6 +587,22 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (choosingStart || startChoiceClosing) {
+    if (
+      choosingStart &&
+      !startChoiceClosing &&
+      (event.key === "ArrowLeft" || event.key === "ArrowRight")
+    ) {
+      event.preventDefault();
+      ui.focusStartChoice(event.key === "ArrowLeft");
+    }
+    return;
+  }
+
+  if (isGameOver()) {
+    if (ACTIVATION_KEYS.has(event.key)) {
+      event.preventDefault();
+      resetGame();
+    }
     return;
   }
 
@@ -598,7 +616,6 @@ document.addEventListener("keydown", (event) => {
     (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
     !rearranging &&
     !activeHandFocused &&
-    !isGameOver() &&
     userTurnActive
   ) {
     event.preventDefault();

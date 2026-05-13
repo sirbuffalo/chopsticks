@@ -46,6 +46,12 @@ async function expectHands(page, person, values) {
   await expect(hand(page, person, 1)).toHaveText(String(values[1]));
 }
 
+async function chooseToGoFirst(page) {
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(page.locator(".start-overlay")).toBeHidden();
+  await expect(page.locator(".rearrange")).toBeEnabled();
+}
+
 async function mockBotCache(page, entries) {
   await page.route("**/bot_cache.js", async (route) => {
     await route.fulfill({
@@ -196,6 +202,7 @@ test("app declares a draw when no ranked bot move avoids repetition", async ({
     },
   });
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
@@ -206,8 +213,10 @@ test("app declares a draw when no ranked bot move avoids repetition", async ({
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
 
-  await expect(page.locator(".banner-title")).toHaveText("Draw.");
-  await expect(page.locator(".play-again")).toBeFocused();
+  await expect(page.locator(".turn-indicator")).toHaveText(
+    "Draw. Tap to Play Again.",
+  );
+  await expect(page.locator(".turn-indicator")).toBeFocused();
 
   const wasmCalls = await page.evaluate(() => globalThis.__botCalls);
   expect(wasmCalls.map((call) => call.fn)).toEqual([

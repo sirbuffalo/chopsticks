@@ -77,6 +77,15 @@ export function createUi() {
     }
   }
 
+  function blurStartChoice() {
+    if (
+      document.activeElement === startFirstButton ||
+      document.activeElement === startSecondButton
+    ) {
+      document.activeElement.blur();
+    }
+  }
+
   function markDragSource(handEl) {
     handEl.classList.add("drag-source");
     document.body.classList.add("dragging");
@@ -110,6 +119,14 @@ export function createUi() {
     hands
       .findLast((h) => h.dataset.person === "user" && h.tabIndex === 0)
       ?.focus();
+  }
+
+  function focusPlayAgainPrompt() {
+    turnIndicator.focus();
+  }
+
+  function focusStartChoice(userGoesFirst) {
+    (userGoesFirst ? startFirstButton : startSecondButton).focus();
   }
 
   function focusAdjacentHand(handEl, direction) {
@@ -208,6 +225,11 @@ export function createUi() {
     turnIndicator.hidden = turnText.length === 0;
     turnIndicator.classList.toggle("game-over", gameIsOver);
     turnIndicator.tabIndex = gameIsOver ? 0 : -1;
+    if (gameIsOver) {
+      turnIndicator.setAttribute("role", "button");
+    } else {
+      turnIndicator.removeAttribute("role");
+    }
     turnIndicator.setAttribute(
       "aria-label",
       gameIsOver ? `${turnText}. Play again.` : turnText,
@@ -233,6 +255,7 @@ export function createUi() {
     rulesCloseButton,
     rulesDialog,
     blurActiveHand,
+    blurStartChoice,
     clearDragState,
     clearToast,
     closeRules,
@@ -241,6 +264,8 @@ export function createUi() {
     focusFirstTargetHand,
     focusFirstUserHand,
     focusLastPlayableUserHand,
+    focusPlayAgainPrompt,
+    focusStartChoice,
     isRulesOpen,
     markDragSource,
     markDropTarget,

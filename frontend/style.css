@@ -260,6 +260,10 @@ body {
   z-index: 4;
 }
 
+.start-overlay[hidden] {
+  display: none;
+}
+
 .start-overlay.visible {
   opacity: 1;
   pointer-events: auto;

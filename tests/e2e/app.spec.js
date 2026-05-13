@@ -42,6 +42,12 @@ async function expectHands(page, person, values) {
   await expect(hand(page, person, 1)).toHaveText(String(values[1]));
 }
 
+async function chooseToGoFirst(page) {
+  await page.getByRole("button", { name: "Yes" }).click();
+  await expect(page.locator(".start-overlay")).toBeHidden();
+  await expect(page.locator(".rearrange")).toBeEnabled();
+}
+
 test("app boots with the main UI and no console errors", async ({ page }) => {
   await page.goto("/");
 
@@ -49,14 +55,40 @@ test("app boots with the main UI and no console errors", async ({ page }) => {
   await expect(page.locator(".hand")).toHaveCount(4);
   await expectHands(page, "opponent", [1, 1]);
   await expectHands(page, "user", [1, 1]);
+  await expect(page.locator(".start-overlay")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "No" })).toBeVisible();
 
+  await expect(hand(page, "user", 0)).toHaveJSProperty("draggable", false);
+  await expect(hand(page, "user", 1)).toHaveJSProperty("draggable", false);
+  await expect(hand(page, "opponent", 0)).toHaveJSProperty("draggable", false);
+  await expect(hand(page, "opponent", 1)).toHaveJSProperty("draggable", false);
+  await expect(page.locator(".rearrange")).toBeDisabled();
+  await expect(page.locator(".rearrange-cancel")).toBeDisabled();
+
+  await chooseToGoFirst(page);
   await expect(hand(page, "user", 0)).toHaveJSProperty("draggable", true);
   await expect(hand(page, "user", 1)).toHaveJSProperty("draggable", true);
   await expect(hand(page, "opponent", 0)).toHaveJSProperty("draggable", false);
   await expect(hand(page, "opponent", 1)).toHaveJSProperty("draggable", false);
   await expect(page.locator(".rearrange")).toBeEnabled();
   await expect(page.locator(".rearrange-cancel")).toBeDisabled();
-  await expect(page.locator(".banner-wrapper")).toBeHidden();
+});
+
+test("start choice can be focused with left and right arrow keys", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("button", { name: "No" })).toBeFocused();
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("button", { name: "Yes" })).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".start-overlay")).toBeHidden();
+  await expect(page.locator(".rearrange")).toBeEnabled();
 });
 
 test("rules button opens and closes the rules dialog", async ({ page }) => {
@@ -78,6 +110,7 @@ test("user can hit an opponent hand and see the deterministic bot reply", async 
   page,
 }) => {
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await hand(page, "user", 0).click();
   await expect(hand(page, "user", 0)).toHaveClass(/drag-source/);
@@ -92,6 +125,7 @@ test("user can hit an opponent hand and see the deterministic bot reply", async 
 
 test("user can select and hit hands with the keyboard", async ({ page }) => {
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await page.keyboard.press("ArrowRight");
   await expect(hand(page, "user", 1)).toBeFocused();
@@ -178,8 +212,9 @@ test("keyboard mode resumes on the first live user hand after the bot turn", asy
     });
   });
   await page.goto("/");
+  await chooseToGoFirst(page);
 
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("ArrowLeft");
   await expect(hand(page, "user", 0)).toBeFocused();
 
   await page.keyboard.press("Enter");
@@ -215,26 +250,32 @@ test("play again is focused and keyboard-activatable after game over", async ({
     });
   });
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
 
-  await expect(page.locator(".banner-title")).toHaveText("You lose.");
-  await expect(page.locator(".play-again")).toBeFocused();
+  await expect(page.locator(".turn-indicator")).toHaveText(
+    "You Lose. Tap to Play Again.",
+  );
+  await expect(page.locator(".turn-indicator")).toBeFocused();
 
   await page.keyboard.press("Enter");
-  await expect(page.locator(".banner-wrapper")).toBeHidden();
+  await expect(page.locator(".start-overlay")).toBeVisible();
   await expectHands(page, "user", [1, 1]);
   await expectHands(page, "opponent", [1, 1]);
 
+  await chooseToGoFirst(page);
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
 
-  await expect(page.locator(".banner-title")).toHaveText("You lose.");
-  await expect(page.locator(".play-again")).toBeFocused();
+  await expect(page.locator(".turn-indicator")).toHaveText(
+    "You Lose. Tap to Play Again.",
+  );
+  await expect(page.locator(".turn-indicator")).toBeFocused();
 
   await page.keyboard.press("Space");
-  await expect(page.locator(".banner-wrapper")).toBeHidden();
+  await expect(page.locator(".start-overlay")).toBeVisible();
   await expectHands(page, "user", [1, 1]);
   await expectHands(page, "opponent", [1, 1]);
 });
@@ -253,6 +294,7 @@ test("user hit preserves the visible opponent hand that was clicked", async ({
     };
   });
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
@@ -260,6 +302,7 @@ test("user hit preserves the visible opponent hand that was clicked", async ({
   await expectHands(page, "opponent", [2, 1]);
 
   await page.reload();
+  await chooseToGoFirst(page);
 
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 1).click();
@@ -271,6 +314,7 @@ test("rearrange mode edits in-memory state and cancel restores it", async ({
   page,
 }) => {
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await page.locator(".rearrange").click();
 
@@ -312,6 +356,7 @@ test("invalid rearrange input is ignored while unchanged confirmation stays disa
   page,
 }) => {
   await page.goto("/");
+  await chooseToGoFirst(page);
 
   await page.locator(".rearrange").click();
   await page.keyboard.press("x");
