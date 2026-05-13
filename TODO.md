@@ -22,13 +22,6 @@ Suggested next steps, roughly ordered by value.
   canonical positions × 2 turns ≈ 300, and even fewer are reached). Either
   compute the denominator after enumeration so progress is accurate, or drop
   the percentage display.
-- [scripts/prebuild-cache.mjs](scripts/prebuild-cache.mjs) reuses the existing
-  cache by regex-matching `chopsticksPrebuiltBotCache = [...]` out of the
-  generated file. If anyone reformats `bot_cache.js` (e.g. Prettier on
-  `frontend/**/*.js`), the regex breaks silently and the cache rebuilds from
-  scratch. The file is already in `.gitignore` and Prettier is currently scoped
-  to JS, but worth either pinning the format explicitly (e.g. a sentinel
-  comment) or storing the cache as JSON next to the generated JS.
 - [frontend/bot.js](frontend/bot.js) sets `botCacheLimit = Math.max(10, prebuiltBotMoveCache.size)`,
   which effectively pins the runtime LRU to the prebuilt cache's size (often
   thousands). The two caches are independent maps; the runtime cache only ever
