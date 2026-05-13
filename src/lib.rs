@@ -660,6 +660,102 @@ fn pack_hands(hands: [[u8; 2]; 2]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn terminal_states_evaluate_from_the_side_to_move() {
+        struct Case {
+            name: &'static str,
+            state: State,
+            outcome: Outcome,
+        }
+
+        let cases = [
+            Case {
+                name: "current player dead is a loss",
+                state: State::new(0, [[0, 0], [1, 1]]),
+                outcome: Outcome::Loss,
+            },
+            Case {
+                name: "opponent dead is a win",
+                state: State::new(0, [[1, 1], [0, 0]]),
+                outcome: Outcome::Win,
+            },
+            Case {
+                name: "same hands invert when turn changes",
+                state: State::new(1, [[1, 1], [0, 0]]),
+                outcome: Outcome::Loss,
+            },
+        ];
+
+        for case in cases {
+            chopsticks_bot_clear_cache();
+
+            assert_eq!(case.state.terminal(), Some(case.outcome), "{}", case.name);
+
+            let (evaluation, best_move) = best_move(case.state);
+            assert_eq!(
+                evaluation,
+                Evaluation::terminal(case.outcome),
+                "{}",
+                case.name
+            );
+            assert!(best_move.is_none(), "{}", case.name);
+        }
+    }
+
+    #[test]
+    fn immediate_winning_hits_are_selected() {
+        struct Case {
+            name: &'static str,
+            state: State,
+            next: State,
+        }
+
+        let cases = [
+            Case {
+                name: "player zero kills player one's last hand",
+                state: State::new(0, [[1, 4], [0, 1]]),
+                next: State::new(1, [[1, 4], [0, 0]]),
+            },
+            Case {
+                name: "player one kills player zero's last hand",
+                state: State::new(1, [[0, 1], [1, 4]]),
+                next: State::new(0, [[0, 0], [1, 4]]),
+            },
+        ];
+
+        for case in cases {
+            chopsticks_bot_clear_cache();
+
+            let (evaluation, best_move) = best_move(case.state);
+
+            assert_eq!(
+                evaluation,
+                Evaluation {
+                    outcome: Outcome::Win,
+                    plies: 1,
+                },
+                "{}",
+                case.name
+            );
+            assert_eq!(
+                best_move.map(|candidate| candidate.next),
+                Some(case.next),
+                "{}",
+                case.name
+            );
+        }
+    }
+
+    #[test]
+    fn wasm_export_packs_immediate_winning_hit_reply() {
+        chopsticks_bot_clear_cache();
+
+        let packed = chopsticks_bot_next_state(0, 1, 1, 4);
+
+        assert_eq!(packed, pack_hands([[0, 0], [1, 4]]));
+    }
 
     #[test]
     fn wasm_export_returns_a_packed_bot_reply() {
@@ -692,5 +788,81 @@ mod tests {
                 .iter()
                 .any(|candidate| candidate.next.hands[0] == [2, 2])
         );
+    }
+
+    #[test]
+    fn legal_moves_are_canonical_and_deduplicated_for_symmetric_hands() {
+        let state = State::new(0, [[1, 1], [1, 1]]);
+        let moves = state.legal_moves();
+        let unique_next_states = moves
+            .iter()
+            .map(|candidate| candidate.next)
+            .collect::<HashSet<_>>();
+
+        assert_eq!(unique_next_states.len(), moves.len());
+        assert_eq!(
+            moves
+                .iter()
+                .filter(|candidate| matches!(&candidate.kind, MoveKind::Hit { .. }))
+                .count(),
+            1
+        );
+        assert!(
+            moves
+                .iter()
+                .any(|candidate| candidate.next == State::new(1, [[1, 1], [1, 2]]))
+        );
+        assert!(moves.iter().any(|candidate| matches!(
+            &candidate.kind,
+            MoveKind::Split {
+                before: [1, 1],
+                after: [0, 2],
+            }
+        )));
+
+        for candidate in moves {
+            assert!(
+                candidate
+                    .next
+                    .hands
+                    .iter()
+                    .all(|hands| hands[0] <= hands[1])
+            );
+        }
+    }
+
+    #[test]
+    fn split_moves_preserve_total_without_modulo_wrapping() {
+        struct Case {
+            hands: [u8; 2],
+            expected_splits: &'static [[u8; 2]],
+        }
+
+        let cases = [
+            Case {
+                hands: [0, 4],
+                expected_splits: &[[1, 3], [2, 2]],
+            },
+            Case {
+                hands: [4, 4],
+                expected_splits: &[],
+            },
+        ];
+
+        for case in cases {
+            let state = State::new(0, [case.hands, [1, 1]]);
+            let splits = state
+                .legal_moves()
+                .into_iter()
+                .filter_map(|candidate| match candidate.kind {
+                    MoveKind::Split { after, .. } => Some(after),
+                    MoveKind::Hit { .. } => None,
+                })
+                .collect::<Vec<_>>();
+            let total = case.hands[0] + case.hands[1];
+
+            assert_eq!(splits, case.expected_splits);
+            assert!(splits.iter().all(|after| after[0] + after[1] == total));
+        }
     }
 }

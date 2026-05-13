@@ -9,6 +9,7 @@
     "lint": "eslint \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
     "lint:md": "markdownlint-cli2 \"*.md\"",
     "lint:fix": "eslint --fix \"frontend/**/*.js\" \"tests/**/*.js\" scripts/ playwright.config.js",
+    "test:unit": "node --test tests/unit/*.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
