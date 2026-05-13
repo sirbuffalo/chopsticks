@@ -14,13 +14,6 @@ Suggested next steps, roughly ordered by value.
   cache helpers are only used by Rust unit tests via `super::*`; `_outcome` is
   unused. Drop the FFI attributes (or delete `_outcome` entirely) so they stop
   bloating the shipped WASM and the public ABI surface.
-- [src/main.rs](src/main.rs) and [src/lib.rs](src/lib.rs) duplicate `State`,
-  `Move`, `Outcome`, `Evaluation`, `legal_moves`, `reachable_graph`,
-  `solve_outcomes`, and `best_move_for`. Move the shared core into the lib
-  (under a `#[cfg(not(target_arch = "wasm32"))]`-friendly module) and have
-  `main.rs` reuse it, keeping the CLI-only `MoveKind::Hit` fields (`amount`,
-  `before`, `after`) and SQLite layer in `main.rs`. This is the single biggest
-  source of "edit three places" risk.
 
 ## Smaller polish
 
