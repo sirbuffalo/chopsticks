@@ -5,7 +5,7 @@ export default [
   { ignores: ["node_modules/"] },
   js.configs.recommended,
   {
-    files: ["frontend/script.js"],
+    files: ["frontend/**/*.js"],
     languageOptions: {
       globals: globals.browser,
     },

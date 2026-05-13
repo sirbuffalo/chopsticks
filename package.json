@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
-    "format": "prettier --write frontend/script.js scripts/",
-    "format:check": "prettier --check frontend/script.js scripts/",
-    "lint": "eslint frontend/script.js scripts/",
-    "lint:fix": "eslint --fix frontend/script.js scripts/"
+    "format": "prettier --write \"frontend/**/*.js\" scripts/",
+    "format:check": "prettier --check \"frontend/**/*.js\" scripts/",
+    "lint": "eslint \"frontend/**/*.js\" scripts/",
+    "lint:fix": "eslint --fix \"frontend/**/*.js\" scripts/"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

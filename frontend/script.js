@@ -1,7 +1,18 @@
-const MODULUS = 5;
-const BOT_CACHE_LIMIT = 10;
-const REPETITION_LIMIT = 3;
-const NO_BOT_MOVE = -1;
+import { createBotController } from "./bot.js";
+import {
+  MODULUS,
+  applyPackedHands,
+  canonicalPair,
+  clamp,
+  cloneState,
+  hasLegalUserMove,
+  hasLiveHands,
+  recordPosition as recordRepetitionPosition,
+  sortedPair,
+  splitRange,
+  wouldRepeat as wouldRepeatPosition,
+} from "./rules.js";
+import { createUi } from "./ui.js";
 
 const state = {
   user: [1, 1],
@@ -14,75 +25,45 @@ let rearrangeTotal = 0;
 let rearrangeStart = [1, 1];
 let userTurnActive = true;
 let gameOver = null;
-let toastTimer = null;
 
 const REPETITION_MESSAGE = "That position has already appeared twice.";
 
-const hands = Array.from(document.querySelectorAll(".hand"));
-const rearrangeButton = document.querySelector(".rearrange");
-const cancelButton = document.querySelector(".rearrange-cancel");
-const actions = document.querySelector(".rearrange-actions");
-const bannerWrapper = document.querySelector(".banner-wrapper");
-const bannerTitle = document.querySelector(".banner-title");
-const playAgainButton = document.querySelector(".play-again");
-const toastEl = document.querySelector(".toast");
-const botWasmPromise = loadBotWasm();
-const prebuiltBotMoveCache = new Map(window.chopsticksPrebuiltBotCache ?? []);
-const botMoveCache = new Map();
-const botCacheLimit = Math.max(BOT_CACHE_LIMIT, prebuiltBotMoveCache.size);
 const repetitionCounts = new Map();
+const ui = createUi();
+const botController = createBotController({
+  state,
+  repetitionCounts,
+  wouldRepeat,
+});
 
 function isGameOver() {
   return gameOver !== null;
 }
 
-const BANNER_TITLES = {
-  "user-win": "You win!",
-  "bot-win": "You lose.",
-  draw: "Draw.",
-};
-
-async function loadBotWasm() {
-  const wasmUrl = new URL("chopsticks.wasm", window.location.href);
-
-  async function instantiateFromBytes() {
-    const response = await fetch(wasmUrl);
-    if (!response.ok) {
-      throw new Error(`WASM request failed with status ${response.status}`);
-    }
-
-    const bytes = await response.arrayBuffer();
-    const { instance } = await WebAssembly.instantiate(bytes);
-    return instance.exports;
-  }
-
-  try {
-    if (WebAssembly.instantiateStreaming) {
-      try {
-        const { instance } = await WebAssembly.instantiateStreaming(
-          fetch(wasmUrl),
-        );
-        return instance.exports;
-      } catch (error) {
-        console.warn(
-          "Streaming WASM instantiation failed; falling back to ArrayBuffer.",
-          error,
-        );
-      }
-    }
-
-    return await instantiateFromBytes();
-  } catch (error) {
-    console.error(
-      "Could not load Chopsticks WASM bot. Run `scripts/build-static-wasm.sh`.",
-      error,
-    );
-    return null;
-  }
-}
-
 function handValue(person, hand) {
   return state[person][hand];
+}
+
+function currentState() {
+  return cloneState(state);
+}
+
+function wouldRepeat(turn, candidate) {
+  return wouldRepeatPosition(repetitionCounts, turn, candidate);
+}
+
+function recordPosition(turn, candidate = currentState()) {
+  recordRepetitionPosition(repetitionCounts, turn, candidate);
+}
+
+function render() {
+  ui.render({
+    state,
+    rearranging,
+    userTurnActive,
+    gameOver,
+    issue: rearrangeIssue(),
+  });
 }
 
 function canDrag(handEl) {
@@ -121,203 +102,16 @@ function hitIssue(attacker, target) {
   return wouldRepeat("bot", candidate) ? "would-repeat" : "none";
 }
 
-function hasLiveHands(person) {
-  return state[person].some((value) => value > 0);
-}
-
-function render() {
-  for (const handEl of hands) {
-    const person = handEl.dataset.person;
-    const hand = Number(handEl.dataset.hand);
-    const value = handValue(person, hand);
-    const editable = rearranging && person === "user";
-    const inactiveUserHand =
-      person === "user" && (!userTurnActive || isGameOver());
-
-    handEl.textContent = value;
-    handEl.draggable =
-      !isGameOver() &&
-      !editable &&
-      userTurnActive &&
-      person === "user" &&
-      value > 0;
-    handEl.contentEditable = editable ? "true" : "false";
-    handEl.spellcheck = false;
-    handEl.classList.toggle("dead", value === 0);
-    handEl.classList.toggle("draggable", handEl.draggable);
-    handEl.classList.toggle("editing", editable);
-    handEl.classList.toggle("inactive", inactiveUserHand);
-    handEl.setAttribute("aria-label", `${person} hand ${hand + 1}: ${value}`);
-  }
-
-  rearrangeButton.textContent = rearranging ? "Confirm" : "Rearrange";
-  rearrangeButton.disabled = rearranging
-    ? rearrangeIssue() === "unchanged"
-    : !userTurnActive || isGameOver();
-  cancelButton.disabled = !rearranging;
-  actions.classList.toggle("editing", rearranging);
-  actions.classList.toggle(
-    "inactive",
-    (!userTurnActive || isGameOver()) && !rearranging,
-  );
-
-  if (isGameOver()) {
-    bannerTitle.textContent = BANNER_TITLES[gameOver];
-    bannerWrapper.hidden = false;
-  } else {
-    bannerWrapper.hidden = true;
-  }
-}
-
-function showToast(message) {
-  toastEl.textContent = message;
-  toastEl.classList.add("visible");
-  if (toastTimer !== null) {
-    clearTimeout(toastTimer);
-  }
-  toastTimer = window.setTimeout(() => {
-    toastEl.classList.remove("visible");
-    toastTimer = null;
-  }, 2500);
-}
-
-function currentState() {
-  return {
-    user: [...state.user],
-    opponent: [...state.opponent],
-  };
-}
-
-function canonicalPair(hands) {
-  return [...hands].sort((left, right) => left - right);
-}
-
-function repetitionKey(turn, candidate = currentState()) {
-  const user = canonicalPair(candidate.user);
-  const opponent = canonicalPair(candidate.opponent);
-
-  return `${turn}:${user[0]},${user[1]}:${opponent[0]},${opponent[1]}`;
-}
-
-function wouldRepeat(turn, candidate) {
-  return (
-    (repetitionCounts.get(repetitionKey(turn, candidate)) ?? 0) >=
-    REPETITION_LIMIT - 1
-  );
-}
-
-function recordPosition(turn, candidate = currentState()) {
-  const key = repetitionKey(turn, candidate);
-  repetitionCounts.set(key, (repetitionCounts.get(key) ?? 0) + 1);
-}
-
-function applyPackedHands(packed) {
-  state.user[0] = packed & 0xf;
-  state.user[1] = (packed >> 4) & 0xf;
-  state.opponent[0] = (packed >> 8) & 0xf;
-  state.opponent[1] = (packed >> 12) & 0xf;
-}
-
-function packedToState(packed) {
-  return {
-    user: canonicalPair([packed & 0xf, (packed >> 4) & 0xf]),
-    opponent: canonicalPair([(packed >> 8) & 0xf, (packed >> 12) & 0xf]),
-  };
-}
-
-function sortedHandPair(hands) {
-  return [...hands].sort((left, right) => left - right);
-}
-
-function botCacheKey() {
-  const user = sortedHandPair(state.user);
-  const opponent = sortedHandPair(state.opponent);
-
-  return `${user[0]},${user[1]}:${opponent[0]},${opponent[1]}`;
-}
-
-function historyFingerprint() {
-  return [...repetitionCounts.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, count]) => `${key}=${count}`)
-    .join("|");
-}
-
-function botHistoryCacheKey() {
-  return `${botCacheKey()}|${historyFingerprint()}`;
-}
-
-function cacheBotMove(key, packed) {
-  if (botMoveCache.has(key)) {
-    botMoveCache.delete(key);
-  }
-
-  botMoveCache.set(key, packed);
-
-  while (botMoveCache.size > botCacheLimit) {
-    botMoveCache.delete(botMoveCache.keys().next().value);
-  }
-}
-
-function calculateBotMove(bot) {
-  const historyKey = botHistoryCacheKey();
-  const cached = botMoveCache.get(historyKey);
-
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  const stateKey = botCacheKey();
-  const prebuilt = prebuiltBotMoveCache.get(stateKey);
-
-  if (prebuilt !== undefined && !wouldRepeat("user", packedToState(prebuilt))) {
-    cacheBotMove(historyKey, prebuilt);
-    return prebuilt;
-  }
-
-  const best = bot.chopsticks_bot_next_state(
-    state.user[0],
-    state.user[1],
-    state.opponent[0],
-    state.opponent[1],
-  );
-
-  if (!wouldRepeat("user", packedToState(best))) {
-    cacheBotMove(historyKey, best);
-    return best;
-  }
-
-  if (!bot.chopsticks_bot_ranked_next_state) {
-    return null;
-  }
-
-  for (let rank = 0; rank < 32; rank += 1) {
-    const next = bot.chopsticks_bot_ranked_next_state(
-      state.user[0],
-      state.user[1],
-      state.opponent[0],
-      state.opponent[1],
-      rank,
-    );
-
-    if (next === NO_BOT_MOVE) {
-      return null;
-    }
-
-    if (!wouldRepeat("user", packedToState(next))) {
-      cacheBotMove(historyKey, next);
-      return next;
-    }
-  }
-
-  return null;
+function clearDragState() {
+  draggedHand = null;
+  ui.clearDragState();
 }
 
 function finishUserTurn() {
   userTurnActive = false;
   clearDragState();
 
-  if (!hasLiveHands("opponent")) {
+  if (!hasLiveHands(state, "opponent")) {
     gameOver = "user-win";
     render();
     return;
@@ -328,76 +122,23 @@ function finishUserTurn() {
   window.setTimeout(botTurn, 250);
 }
 
-function hasLegalUserMove() {
-  if (!hasLiveHands("user") || !hasLiveHands("opponent")) {
-    return false;
-  }
-
-  for (let attacker = 0; attacker < 2; attacker += 1) {
-    const amount = state.user[attacker];
-    if (amount === 0) {
-      continue;
-    }
-
-    for (let target = 0; target < 2; target += 1) {
-      const before = state.opponent[target];
-      if (before === 0) {
-        continue;
-      }
-
-      const candidate = currentState();
-      candidate.opponent[target] = (before + amount) % MODULUS;
-      candidate.opponent = canonicalPair(candidate.opponent);
-
-      if (!wouldRepeat("bot", candidate)) {
-        return true;
-      }
-    }
-  }
-
-  const total = state.user[0] + state.user[1];
-  const before = canonicalPair(state.user);
-
-  for (let left = 0; left < MODULUS; left += 1) {
-    for (let right = left; right < MODULUS; right += 1) {
-      const after = [left, right];
-      if (
-        left + right === total &&
-        (after[0] !== before[0] || after[1] !== before[1]) &&
-        !wouldRepeat("bot", {
-          user: after,
-          opponent: canonicalPair(state.opponent),
-        })
-      ) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 async function botTurn() {
-  const bot = await botWasmPromise;
+  const next = await botController.nextMove();
 
-  if (bot?.chopsticks_bot_next_state) {
-    const next = calculateBotMove(bot);
-    if (next === null) {
-      gameOver = "draw";
-      render();
-      return;
-    }
-    applyPackedHands(next);
-    recordPosition("user");
-  } else {
-    console.warn(
-      "Chopsticks WASM bot is unavailable; returning control to the player.",
-    );
+  if (next === null) {
+    gameOver = "draw";
+    render();
+    return;
   }
 
-  if (!hasLiveHands("user")) {
+  if (next !== undefined) {
+    applyPackedHands(state, next);
+    recordPosition("user");
+  }
+
+  if (!hasLiveHands(state, "user")) {
     gameOver = "bot-win";
-  } else if (!hasLegalUserMove()) {
+  } else if (!hasLegalUserMove(state, wouldRepeat)) {
     gameOver = "draw";
   } else {
     userTurnActive = true;
@@ -418,14 +159,6 @@ function hitOpponent(targetEl) {
   finishUserTurn();
 }
 
-function clearDragState() {
-  draggedHand = null;
-  document.body.classList.remove("dragging");
-  for (const handEl of hands) {
-    handEl.classList.remove("drag-source", "drop-target");
-  }
-}
-
 function toggleRearrange() {
   clearDragState();
 
@@ -438,9 +171,7 @@ function toggleRearrange() {
     rearrangeTotal = state.user[0] + state.user[1];
     rearranging = true;
     render();
-    hands
-      .find((h) => h.dataset.person === "user" && h.dataset.hand === "0")
-      ?.focus();
+    ui.focusFirstUserHand();
     return;
   }
 
@@ -452,7 +183,7 @@ function toggleRearrange() {
   }
 
   if (issue === "would-repeat") {
-    showToast(REPETITION_MESSAGE);
+    ui.showToast(REPETITION_MESSAGE);
     return;
   }
 
@@ -470,21 +201,6 @@ function cancelRearrange() {
   state.user = [...rearrangeStart];
   rearranging = false;
   render();
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function splitRange(total) {
-  return {
-    min: Math.max(0, total - (MODULUS - 1)),
-    max: Math.min(MODULUS - 1, total),
-  };
-}
-
-function sortedPair(values) {
-  return [...values].sort((left, right) => left - right);
 }
 
 function rearrangeIssue() {
@@ -517,25 +233,11 @@ function resetGame() {
   userTurnActive = true;
   gameOver = null;
   repetitionCounts.clear();
-  botMoveCache.clear();
-  if (toastTimer !== null) {
-    clearTimeout(toastTimer);
-    toastTimer = null;
-  }
-  toastEl.classList.remove("visible");
+  botController.clearCache();
+  ui.clearToast();
   clearDragState();
   recordPosition("user");
   render();
-}
-
-function placeCaretAtEnd(element) {
-  const range = document.createRange();
-  const selection = window.getSelection();
-
-  range.selectNodeContents(element);
-  range.collapse(false);
-  selection.removeAllRanges();
-  selection.addRange(range);
 }
 
 function updateSplitFromEdit(handEl) {
@@ -552,14 +254,14 @@ function updateSplitFromEdit(handEl) {
   state.user[changedHand] = value;
   state.user[otherHand] = rearrangeTotal - value;
   render();
-  placeCaretAtEnd(handEl);
+  ui.placeCaretAtEnd(handEl);
 }
 
-rearrangeButton.addEventListener("click", toggleRearrange);
-cancelButton.addEventListener("click", cancelRearrange);
-playAgainButton.addEventListener("click", resetGame);
+ui.rearrangeButton.addEventListener("click", toggleRearrange);
+ui.cancelButton.addEventListener("click", cancelRearrange);
+ui.playAgainButton.addEventListener("click", resetGame);
 
-for (const handEl of hands) {
+for (const handEl of ui.hands) {
   handEl.addEventListener("dragstart", (event) => {
     if (!canDrag(handEl)) {
       event.preventDefault();
@@ -567,8 +269,7 @@ for (const handEl of hands) {
     }
 
     draggedHand = Number(handEl.dataset.hand);
-    handEl.classList.add("drag-source");
-    document.body.classList.add("dragging");
+    ui.markDragSource(handEl);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(draggedHand));
   });
@@ -577,7 +278,7 @@ for (const handEl of hands) {
 
   handEl.addEventListener("dragenter", () => {
     if (canDrop(handEl)) {
-      handEl.classList.add("drop-target");
+      ui.markDropTarget(handEl);
       return;
     }
 
@@ -588,12 +289,12 @@ for (const handEl of hands) {
       handEl.dataset.person === "opponent" &&
       hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
     ) {
-      showToast(REPETITION_MESSAGE);
+      ui.showToast(REPETITION_MESSAGE);
     }
   });
 
   handEl.addEventListener("dragleave", () => {
-    handEl.classList.remove("drop-target");
+    ui.unmarkDropTarget(handEl);
   });
 
   handEl.addEventListener("dragover", (event) => {
@@ -631,8 +332,7 @@ for (const handEl of hands) {
 
       clearDragState();
       draggedHand = hand;
-      handEl.classList.add("drag-source");
-      document.body.classList.add("dragging");
+      ui.markDragSource(handEl);
       return;
     }
 
@@ -644,7 +344,7 @@ for (const handEl of hands) {
         userTurnActive &&
         hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
       ) {
-        showToast(REPETITION_MESSAGE);
+        ui.showToast(REPETITION_MESSAGE);
       }
     }
   });
@@ -653,7 +353,7 @@ for (const handEl of hands) {
 
   handEl.addEventListener("focus", () => {
     if (rearranging && handEl.dataset.person === "user") {
-      placeCaretAtEnd(handEl);
+      ui.placeCaretAtEnd(handEl);
     }
   });
 
@@ -683,7 +383,7 @@ for (const handEl of hands) {
       state.user[0] = newLeft;
       state.user[1] = rearrangeTotal - newLeft;
       render();
-      placeCaretAtEnd(handEl);
+      ui.placeCaretAtEnd(handEl);
       return;
     }
 
@@ -705,7 +405,7 @@ for (const handEl of hands) {
 }
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "r" && !rearranging && !rearrangeButton.disabled) {
+  if (event.key === "r" && !rearranging && !ui.rearrangeButton.disabled) {
     event.preventDefault();
     toggleRearrange();
     return;
