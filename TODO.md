@@ -8,9 +8,6 @@ Suggested next steps, roughly ordered by value.
 
 ## Deploy / build correctness
 
-- [ ] **CI doesn't verify generated artifacts are fresh.** [.github/workflows/static.yml](.github/workflows/static.yml) just uploads `frontend/`. If someone edits [src/lib.rs](src/lib.rs) and forgets to run the build script, the deploy silently ships a stale bot. Pick one:
-  - Run `./scripts/build-static-wasm.sh` in CI and stop tracking [frontend/chopsticks.wasm](frontend/chopsticks.wasm) / [frontend/bot_cache.js](frontend/bot_cache.js) (~90KB of generated artifacts out of git).
-  - Or keep them tracked and add a `--check` mode that rebuilds and `git diff --exit-code`s, failing CI on staleness.
 - [ ] **Tune release profile.** [Cargo.toml](Cargo.toml) has no `[profile.release]`. Add `lto = true`, `codegen-units = 1`, `opt-level = "z"`, `strip = true` to shrink the WASM.
 
 ## Code / structure
@@ -19,6 +16,5 @@ Suggested next steps, roughly ordered by value.
 
 ## Smaller polish
 
-- [x] Favicon + meta description + OG tags on [frontend/index.html](frontend/index.html).
 - [ ] Prune unreachable entries from `repetitionCounts` ([frontend/script.js:26](frontend/script.js#L26)) — grows unbounded per game; fine in practice, but tidy.
 - [ ] Surface [rules.md](rules.md) from the UI — a "Rules" link or expandable section.

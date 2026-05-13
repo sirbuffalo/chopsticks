@@ -1,5 +1,7 @@
 /target
 /node_modules/
+/frontend/bot_cache.js
+/frontend/chopsticks.wasm
 *.sqlite
 *.sqlite-*
 /playwright-report/

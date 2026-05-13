@@ -8,7 +8,7 @@ Operational context for an agent (Claude, Codex, etc.) working in this repo. Pai
 - [src/main.rs](src/main.rs) — native CLI that uses `rusqlite` to precompute a solve database. **Gated by `cfg(not(target_arch = "wasm32"))`** in [Cargo.toml](Cargo.toml); it does **not** ship to the browser.
 - [frontend/](frontend/) — what GitHub Pages serves. Plain HTML/CSS/JS, no bundler.
 - [scripts/](scripts/) — Node build helpers (`.mjs`) and the top-level shell script.
-- [.github/workflows/static.yml](.github/workflows/static.yml) — uploads `frontend/` to Pages on push to `master`. **Does not run the build script.**
+- [.github/workflows/static.yml](.github/workflows/static.yml) — builds the static WASM frontend, runs Playwright tests, uploads the generated `frontend/` artifact, and deploys it to Pages on push to `master`.
 
 ## Build pipeline
 
@@ -30,7 +30,7 @@ One JS artifact has a generator banner at the top:
 - [frontend/bot_cache.js](frontend/bot_cache.js) — regenerate via step 3 above.
 - [frontend/chopsticks.wasm](frontend/chopsticks.wasm) — regenerate via step 2 above.
 
-These are committed to git so the no-CI-build Pages deploy works. Any change to [src/lib.rs](src/lib.rs) requires re-running `./scripts/build-static-wasm.sh` and committing the regenerated files, otherwise the deployed site silently ships a stale bot.
+These files are ignored by git. CI regenerates them before browser tests and deploys the tested `frontend/` artifact. Any local change to [src/lib.rs](src/lib.rs) or cache-relevant game logic requires re-running `./scripts/build-static-wasm.sh` before browser testing, otherwise the local frontend may use a stale bot.
 
 ## Game-logic duplication
 
@@ -52,7 +52,7 @@ Hand pairs are canonicalized by sorting ascending (`canonicalPair` / `sortedPair
 
 ## Deploy
 
-Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) uploads `frontend/` to Pages. No build step in CI. Live site is served from the `frontend/` directory at the root path; there is a [frontend/CNAME](frontend/CNAME) for the custom domain.
+Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, tests it, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path; there is a [frontend/CNAME](frontend/CNAME) for the custom domain.
 
 ## Conventions
 
@@ -62,10 +62,11 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 - Rust unit tests exist in [src/lib.rs](src/lib.rs) and [src/main.rs](src/main.rs); run `cargo test`.
 - There is no frontend bundler. `package.json` is for development tooling (`prettier`, `eslint`, `globals`) and hook setup, not for shipping bundled assets.
 - Frontend uses `<script src>` globals, not ES modules. New code should match unless the task is explicitly to modularize.
+- Playwright starts a local HTTP server from [playwright.config.js](playwright.config.js). In sandboxed agent runs, `npm run test:e2e` may fail before tests start with `PermissionError: [Errno 1] Operation not permitted` while binding `127.0.0.1`; rerun the same command with sandbox approval. Treat that as an environment permission issue, not a test failure.
 
 ## Things to verify before declaring done
 
-- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` and committed [frontend/chopsticks.wasm](frontend/chopsticks.wasm) + [frontend/bot_cache.js](frontend/bot_cache.js).
+- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` before browser/e2e testing. Do not commit [frontend/chopsticks.wasm](frontend/chopsticks.wasm) or [frontend/bot_cache.js](frontend/bot_cache.js); they are generated and ignored.
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
 - If you touched JS under [frontend/script.js](frontend/script.js) or [scripts/](scripts/): run `npm run format:check` and `npm run lint`; use `npm run format` / `npm run lint:fix` for fixes.

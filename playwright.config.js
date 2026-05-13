@@ -12,7 +12,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `python3 -m http.server -d frontend ${port}`,
+    command: `python3 -m http.server --bind 127.0.0.1 -d frontend ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
   },
