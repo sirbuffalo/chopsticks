@@ -20,7 +20,6 @@ Suggested next steps, roughly ordered by value.
 
 - [ ] **Replace script-tag globals with ES modules.** `window.chopsticksBotWasmBase64`, `window.chopsticksPrebuiltBotCache`, and `window.chopsticksPrebuiltBotCacheDepth` are all globals. Switch to `<script type="module">` and split [frontend/script.js](frontend/script.js) (530 lines covering rendering, drag, rearrange, repetition tracking, bot caching, WASM loading) into focused modules.
 - [ ] **Tests.** The Rust solver in [src/lib.rs](src/lib.rs) is doing real minimax work — add regression tests against known terminal positions. Same for the repetition-rule logic in JS (`wouldRepeat`, `hasLegalUserMove`).
-- [ ] **Formatter / linter config.** No `rustfmt.toml`, no eslint/prettier. Cheap to add, prevents drift.
 
 ## Smaller polish
 

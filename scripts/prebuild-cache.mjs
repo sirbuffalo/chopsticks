@@ -6,13 +6,17 @@ const startedAt = performance.now();
 const outputPath = new URL("../frontend/bot_cache.js", import.meta.url);
 const wasmJsPath = new URL("../frontend/bot_wasm.js", import.meta.url);
 const wasmJs = readFileSync(wasmJsPath, "utf8");
-const wasmBase64 = wasmJs.match(/window\.chopsticksBotWasmBase64 = "([^"]+)";/)?.[1];
+const wasmBase64 = wasmJs.match(
+  /window\.chopsticksBotWasmBase64 = "([^"]+)";/,
+)?.[1];
 
 if (!wasmBase64) {
-    throw new Error("Could not find embedded WASM in frontend/bot_wasm.js");
+  throw new Error("Could not find embedded WASM in frontend/bot_wasm.js");
 }
 
-const { instance } = await WebAssembly.instantiate(Buffer.from(wasmBase64, "base64"));
+const { instance } = await WebAssembly.instantiate(
+  Buffer.from(wasmBase64, "base64"),
+);
 const bot = instance.exports;
 const cache = new Map(RESET_CACHE ? [] : loadExistingCache());
 const startingCacheSize = cache.size;
@@ -20,145 +24,158 @@ const expanded = new Map();
 let computedEntries = 0;
 
 function loadExistingCache() {
-    try {
-        const source = readFileSync(outputPath, "utf8");
-        const entriesJson = source.match(/window\.chopsticksPrebuiltBotCache = (.*);/s)?.[1];
+  try {
+    const source = readFileSync(outputPath, "utf8");
+    const entriesJson = source.match(
+      /window\.chopsticksPrebuiltBotCache = (.*);/s,
+    )?.[1];
 
-        if (!entriesJson) {
-            return [];
-        }
-
-        return JSON.parse(entriesJson);
-    } catch (error) {
-        if (error.code === "ENOENT") {
-            return [];
-        }
-
-        throw error;
+    if (!entriesJson) {
+      return [];
     }
+
+    return JSON.parse(entriesJson);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
 }
 
 function sortedPair(left, right) {
-    return [left, right].sort((a, b) => a - b);
+  return [left, right].sort((a, b) => a - b);
 }
 
 function key(state) {
-    return `${state.user[0]},${state.user[1]}:${state.opponent[0]},${state.opponent[1]}`;
+  return `${state.user[0]},${state.user[1]}:${state.opponent[0]},${state.opponent[1]}`;
 }
 
 function packedToState(packed) {
-    return {
-        user: sortedPair(packed & 0xf, (packed >> 4) & 0xf),
-        opponent: sortedPair((packed >> 8) & 0xf, (packed >> 12) & 0xf),
-    };
+  return {
+    user: sortedPair(packed & 0xf, (packed >> 4) & 0xf),
+    opponent: sortedPair((packed >> 8) & 0xf, (packed >> 12) & 0xf),
+  };
 }
 
 function liveHands(hands) {
-    return hands.some((value) => value > 0);
+  return hands.some((value) => value > 0);
 }
 
 function userMoves(state) {
-    const moves = [];
+  const moves = [];
 
-    for (let attacker = 0; attacker < 2; attacker += 1) {
-        const amount = state.user[attacker];
-        if (amount === 0) {
-            continue;
-        }
-
-        for (let target = 0; target < 2; target += 1) {
-            const before = state.opponent[target];
-            if (before === 0) {
-                continue;
-            }
-
-            const opponent = [...state.opponent];
-            opponent[target] = (before + amount) % 5;
-            moves.push({
-                user: [...state.user],
-                opponent: sortedPair(opponent[0], opponent[1]),
-            });
-        }
+  for (let attacker = 0; attacker < 2; attacker += 1) {
+    const amount = state.user[attacker];
+    if (amount === 0) {
+      continue;
     }
 
-    const total = state.user[0] + state.user[1];
-    for (let left = 0; left < 5; left += 1) {
-        for (let right = left; right < 5; right += 1) {
-            if (left + right !== total) {
-                continue;
-            }
+    for (let target = 0; target < 2; target += 1) {
+      const before = state.opponent[target];
+      if (before === 0) {
+        continue;
+      }
 
-            const nextUser = [left, right];
-            const same = nextUser[0] === state.user[0] && nextUser[1] === state.user[1];
-            const swapped = nextUser[0] === state.user[1] && nextUser[1] === state.user[0];
-
-            if (!same && !swapped) {
-                moves.push({ user: nextUser, opponent: [...state.opponent] });
-            }
-        }
+      const opponent = [...state.opponent];
+      opponent[target] = (before + amount) % 5;
+      moves.push({
+        user: [...state.user],
+        opponent: sortedPair(opponent[0], opponent[1]),
+      });
     }
+  }
 
-    return dedupe(moves);
+  const total = state.user[0] + state.user[1];
+  for (let left = 0; left < 5; left += 1) {
+    for (let right = left; right < 5; right += 1) {
+      if (left + right !== total) {
+        continue;
+      }
+
+      const nextUser = [left, right];
+      const same =
+        nextUser[0] === state.user[0] && nextUser[1] === state.user[1];
+      const swapped =
+        nextUser[0] === state.user[1] && nextUser[1] === state.user[0];
+
+      if (!same && !swapped) {
+        moves.push({ user: nextUser, opponent: [...state.opponent] });
+      }
+    }
+  }
+
+  return dedupe(moves);
 }
 
 function dedupe(states) {
-    const deduped = [];
-    const keys = new Set();
+  const deduped = [];
+  const keys = new Set();
 
-    for (const state of states) {
-        const stateKey = key(state);
-        if (!keys.has(stateKey)) {
-            keys.add(stateKey);
-            deduped.push(state);
-        }
+  for (const state of states) {
+    const stateKey = key(state);
+    if (!keys.has(stateKey)) {
+      keys.add(stateKey);
+      deduped.push(state);
     }
+  }
 
-    return deduped;
+  return deduped;
 }
 
 function botReply(state) {
-    const stateKey = key(state);
+  const stateKey = key(state);
 
-    if (!cache.has(stateKey)) {
-        const packed = bot.chopsticks_bot_next_state(
-            state.user[0],
-            state.user[1],
-            state.opponent[0],
-            state.opponent[1],
-        );
-        cache.set(stateKey, packed);
-        computedEntries += 1;
-    }
+  if (!cache.has(stateKey)) {
+    const packed = bot.chopsticks_bot_next_state(
+      state.user[0],
+      state.user[1],
+      state.opponent[0],
+      state.opponent[1],
+    );
+    cache.set(stateKey, packed);
+    computedEntries += 1;
+  }
 
-    return packedToState(cache.get(stateKey));
+  return packedToState(cache.get(stateKey));
 }
 
 function explorePlayerTurn(state, depth) {
-    if (depth >= MAX_DEPTH || !liveHands(state.user) || !liveHands(state.opponent)) {
-        return;
+  if (
+    depth >= MAX_DEPTH ||
+    !liveHands(state.user) ||
+    !liveHands(state.opponent)
+  ) {
+    return;
+  }
+
+  const stateKey = key(state);
+  const remainingDepth = MAX_DEPTH - depth;
+  const previousRemainingDepth = expanded.get(stateKey);
+
+  if (
+    previousRemainingDepth !== undefined &&
+    previousRemainingDepth >= remainingDepth
+  ) {
+    return;
+  }
+  expanded.set(stateKey, remainingDepth);
+
+  for (const afterUserMove of userMoves(state)) {
+    if (!liveHands(afterUserMove.opponent)) {
+      continue;
     }
 
-    const stateKey = key(state);
-    const remainingDepth = MAX_DEPTH - depth;
-    const previousRemainingDepth = expanded.get(stateKey);
-
-    if (previousRemainingDepth !== undefined && previousRemainingDepth >= remainingDepth) {
-        return;
-    }
-    expanded.set(stateKey, remainingDepth);
-
-    for (const afterUserMove of userMoves(state)) {
-        if (!liveHands(afterUserMove.opponent)) {
-            continue;
-        }
-
-        explorePlayerTurn(botReply(afterUserMove), depth + 2);
-    }
+    explorePlayerTurn(botReply(afterUserMove), depth + 2);
+  }
 }
 
 explorePlayerTurn({ user: [1, 1], opponent: [1, 1] }, 0);
 
-const entries = [...cache.entries()].sort(([left], [right]) => left.localeCompare(right));
+const entries = [...cache.entries()].sort(([left], [right]) =>
+  left.localeCompare(right),
+);
 const source = `// Generated by scripts/prebuild-cache.mjs. Do not edit by hand.\nwindow.chopsticksPrebuiltBotCacheDepth = ${MAX_DEPTH};\nwindow.chopsticksPrebuiltBotCache = ${JSON.stringify(entries)};\n`;
 
 writeFileSync(outputPath, source);
@@ -166,6 +183,6 @@ const elapsed = ((performance.now() - startedAt) / 1000).toFixed(1);
 const reused = cache.size - computedEntries;
 const action = RESET_CACHE ? "Rebuilt" : "Expanded";
 console.log(
-    `${action} cache from ${startingCacheSize} to ${entries.length} entries through depth ${MAX_DEPTH} ` +
-        `(${reused} reused, ${computedEntries} computed) at ${outputPath.pathname} in ${elapsed}s`,
+  `${action} cache from ${startingCacheSize} to ${entries.length} entries through depth ${MAX_DEPTH} ` +
+    `(${reused} reused, ${computedEntries} computed) at ${outputPath.pathname} in ${elapsed}s`,
 );
