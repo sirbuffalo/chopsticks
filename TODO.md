@@ -4,8 +4,6 @@ Suggested next steps, roughly ordered by value.
 
 ## Player-facing gaps
 
-- [ ] **End-of-game UI.** A loss/draw currently just freezes the board ([frontend/script.js:303](frontend/script.js#L303), [frontend/script.js:314](frontend/script.js#L314)). Add a win/lose/draw banner and a "play again" button. Reloading should not be the only way to restart.
-- [ ] **Status text.** Nothing tells the player whose turn it is, that the bot is thinking, or that the game ended. Also: page `<title>` is "Game" ([frontend/index.html:5](frontend/index.html#L5)) — rename to "Chopsticks".
 - [ ] **Keyboard / accessibility.** `aria-label` is set per hand ([frontend/script.js:99](frontend/script.js#L99)), but drag-and-drop isn't reachable by keyboard. A click-to-select-attacker, click-to-target model solves both this and touch in one shot.
 
 ## Deploy / build correctness
