@@ -65,3 +65,4 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 - If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` and committed [frontend/bot_wasm.js](frontend/bot_wasm.js) + [frontend/bot_cache.js](frontend/bot_cache.js).
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
+- If you touched any frontend file: run `npx prettier --write frontend/` and verify clean with `npx prettier --check frontend/`.

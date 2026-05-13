@@ -431,6 +431,9 @@ function toggleRearrange() {
     rearrangeTotal = state.user[0] + state.user[1];
     rearranging = true;
     render();
+    hands
+      .find((h) => h.dataset.person === "user" && h.dataset.hand === "0")
+      ?.focus();
     return;
   }
 
@@ -658,13 +661,28 @@ for (const handEl of hands) {
       return;
     }
 
-    const allowedControlKey = [
-      "Backspace",
-      "Delete",
-      "ArrowLeft",
-      "ArrowRight",
-      "Tab",
-    ].includes(event.key);
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRearrange();
+      return;
+    }
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const range = splitRange(rearrangeTotal);
+      // ArrowLeft shifts value toward the left hand (hand 0 gains), ArrowRight toward the right.
+      const delta = event.key === "ArrowLeft" ? 1 : -1;
+      const newLeft = clamp(state.user[0] + delta, range.min, range.max);
+      state.user[0] = newLeft;
+      state.user[1] = rearrangeTotal - newLeft;
+      render();
+      placeCaretAtEnd(handEl);
+      return;
+    }
+
+    const allowedControlKey = ["Backspace", "Delete", "Tab"].includes(
+      event.key,
+    );
 
     if (/^[0-4]$/.test(event.key)) {
       event.preventDefault();
@@ -678,6 +696,26 @@ for (const handEl of hands) {
     }
   });
 }
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "r" && !rearranging && !rearrangeButton.disabled) {
+    event.preventDefault();
+    toggleRearrange();
+    return;
+  }
+
+  if (!rearranging || document.activeElement?.classList.contains("hand")) {
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelRearrange();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    toggleRearrange();
+  }
+});
 
 recordPosition("user");
 render();

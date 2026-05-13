@@ -1,223 +1,231 @@
 :root {
-    --grid-size: min(calc(100dvw / 17), calc(100dvh / 20));
+  --grid-size: min(calc(100dvw / 17), calc(100dvh / 20));
 }
 
-html, body {
-    overflow: hidden;
-    overscroll-behavior: none;
-    touch-action: none;
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 body {
-    width: 100dvw;
-    height: 100dvh;
-    background-color: #bfa373;
-    padding: var(--grid-size);
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    font-family: "Alegreya Sans SC", sans-serif;
+  width: 100dvw;
+  height: 100dvh;
+  background-color: #bfa373;
+  padding: var(--grid-size);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: "Alegreya Sans SC", sans-serif;
 }
 
 .game {
-    position: relative;
-    box-sizing: border-box;
-    width: calc(var(--grid-size) * 15);
-    height: calc(var(--grid-size) * 18);
+  position: relative;
+  box-sizing: border-box;
+  width: calc(var(--grid-size) * 15);
+  height: calc(var(--grid-size) * 18);
 
-    border-radius: calc(2 * var(--grid-size));
-    padding: var(--grid-size);
+  border-radius: calc(2 * var(--grid-size));
+  padding: var(--grid-size);
 
-    background-color: #b0925f;
+  background-color: #b0925f;
 
-    display: flex;
-    flex-direction: column;
-    gap: var(--grid-size);
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-size);
 }
 
 /* each player's area */
 .player-hands {
-    flex: 0 0 calc(var(--grid-size) * 6);
+  flex: 0 0 calc(var(--grid-size) * 6);
 
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: calc(var(--grid-size) * 6);
-    gap: var(--grid-size);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: calc(var(--grid-size) * 6);
+  gap: var(--grid-size);
 }
 
 /* the actual hand cards */
 .hand {
-    box-sizing: border-box;
-    border: 0;
-    padding: var(--grid-size);
-    background-color: #d8c39a;
-    border-radius: var(--grid-size);
-    font-size: calc(var(--grid-size) * 3);
-    color: #2e2a23;
-    z-index: 1;
-    cursor: default;
-    font-family: inherit;
-    display: grid;
-    place-items: center;
-    line-height: 1;
-    text-align: center;
-    transition: background-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease, transform 120ms ease;
-    user-select: none;
-    -webkit-user-select: none;
+  box-sizing: border-box;
+  border: 0;
+  padding: var(--grid-size);
+  background-color: #d8c39a;
+  border-radius: var(--grid-size);
+  font-size: calc(var(--grid-size) * 3);
+  color: #2e2a23;
+  z-index: 1;
+  cursor: default;
+  font-family: inherit;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  text-align: center;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hand.draggable {
-    cursor: grab;
+  cursor: grab;
 }
 
 .hand.draggable:active {
-    cursor: grabbing;
+  cursor: grabbing;
 }
 
 .hand.dead {
-    opacity: 0.45;
+  opacity: 0.45;
 }
 
 .hand.inactive {
-    cursor: default;
-    opacity: 0.45;
+  cursor: default;
+  opacity: 0.45;
 }
 
 .hand.drag-source {
-    opacity: 0.65;
-    transform: scale(0.98);
+  opacity: 0.65;
+  transform: scale(0.98);
 }
 
 .hand.editing {
-    cursor: text;
+  cursor: text;
 }
 
 .hand:focus {
-    outline: none;
+  outline: none;
 }
 
 .dragging .hand[data-person="opponent"]:not(.dead) {
-    box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.08) #2e2a23;
+  box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.08) #2e2a23;
 }
 
 .hand.drop-target {
-    background-color: #ead9b2;
-    box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.14) #2e2a23;
+  background-color: #ead9b2;
+  box-shadow: inset 0 0 0 calc(var(--grid-size) * 0.14) #2e2a23;
 }
 
 .rearrange-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--grid-size);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--grid-size);
 }
 
 .rearrange-actions.editing {
-    grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .rearrange,
 .rearrange-cancel {
-    height: calc(var(--grid-size) * 2);
-    border: 0;
-    border-radius: var(--grid-size);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: calc(var(--grid-size) * 1);
-    display: grid;
-    place-items: center;
-    line-height: 1;
+  height: calc(var(--grid-size) * 2);
+  border: 0;
+  border-radius: var(--grid-size);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: calc(var(--grid-size) * 1);
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
 
 .rearrange {
-    background-color: #2e2a23;
-    color: #ead9b2;
+  background-color: #2e2a23;
+  color: #ead9b2;
 }
 
 .rearrange-cancel {
-    display: none;
-    background-color: #d8c39a;
-    color: #2e2a23;
+  display: none;
+  background-color: #d8c39a;
+  color: #2e2a23;
 }
 
 .rearrange:disabled,
 .rearrange-cancel:disabled,
 .rearrange-actions.inactive {
-    cursor: default;
-    opacity: 0.45;
+  cursor: default;
+  opacity: 0.45;
 }
 
 .rearrange-actions.editing .rearrange-cancel {
-    display: grid;
+  display: grid;
 }
 
 .banner-wrapper {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
 }
 
 .banner-wrapper[hidden] {
-    display: none;
+  display: none;
 }
 
 .banner {
-    pointer-events: auto;
-    background-color: #2e2a23;
-    color: #ead9b2;
-    border-radius: var(--grid-size);
-    padding: var(--grid-size) calc(var(--grid-size) * 1.5);
-    display: flex;
-    align-items: center;
-    gap: calc(var(--grid-size) * 1.25);
-    box-shadow: 0 calc(var(--grid-size) * 0.3) calc(var(--grid-size) * 0.6) rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  background-color: #2e2a23;
+  color: #ead9b2;
+  border-radius: var(--grid-size);
+  padding: var(--grid-size) calc(var(--grid-size) * 1.5);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-size) * 1.25);
+  box-shadow: 0 calc(var(--grid-size) * 0.3) calc(var(--grid-size) * 0.6)
+    rgba(0, 0, 0, 0.25);
 }
 
 .banner-title {
-    font-size: calc(var(--grid-size) * 1.6);
-    line-height: 1;
+  font-size: calc(var(--grid-size) * 1.6);
+  line-height: 1;
 }
 
 .play-again {
-    height: calc(var(--grid-size) * 2);
-    padding: 0 var(--grid-size);
-    border: 0;
-    border-radius: var(--grid-size);
-    background-color: #ead9b2;
-    color: #2e2a23;
-    font-family: inherit;
-    font-size: calc(var(--grid-size) * 1);
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    line-height: 1;
+  height: calc(var(--grid-size) * 2);
+  padding: 0 var(--grid-size);
+  border: 0;
+  border-radius: var(--grid-size);
+  background-color: #ead9b2;
+  color: #2e2a23;
+  font-family: inherit;
+  font-size: calc(var(--grid-size) * 1);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
 
 .toast {
-    position: absolute;
-    top: var(--grid-size);
-    left: 50%;
-    background-color: #2e2a23;
-    color: #ead9b2;
-    border-radius: var(--grid-size);
-    padding: calc(var(--grid-size) * 0.5) var(--grid-size);
-    font-size: calc(var(--grid-size) * 0.9);
-    line-height: 1.1;
-    max-width: calc(var(--grid-size) * 13);
-    text-align: center;
-    opacity: 0;
-    pointer-events: none;
-    transform: translate(-50%, calc(var(--grid-size) * -0.75));
-    transition: opacity 180ms ease, transform 180ms ease;
-    z-index: 20;
+  position: absolute;
+  top: var(--grid-size);
+  left: 50%;
+  background-color: #2e2a23;
+  color: #ead9b2;
+  border-radius: var(--grid-size);
+  padding: calc(var(--grid-size) * 0.5) var(--grid-size);
+  font-size: calc(var(--grid-size) * 0.9);
+  line-height: 1.1;
+  max-width: calc(var(--grid-size) * 13);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(var(--grid-size) * -0.75));
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  z-index: 20;
 }
 
 .toast.visible {
-    opacity: 1;
-    transform: translate(-50%, 0);
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
