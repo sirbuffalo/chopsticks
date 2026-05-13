@@ -1,10 +1,16 @@
 :root {
-    --grid-size: min(calc(100vw / 17), calc(100vh / 20));
+    --grid-size: min(calc(100dvw / 17), calc(100dvh / 20));
+}
+
+html, body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
 }
 
 body {
-    width: 100vw;
-    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
     background-color: #bfa373;
     padding: var(--grid-size);
     box-sizing: border-box;

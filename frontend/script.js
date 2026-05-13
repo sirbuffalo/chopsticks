@@ -486,6 +486,37 @@ for (const handEl of hands) {
         hitOpponent(handEl);
     });
 
+    handEl.addEventListener("click", () => {
+        if (rearranging) {
+            return;
+        }
+
+        const person = handEl.dataset.person;
+
+        if (person === "user") {
+            if (!canDrag(handEl)) {
+                return;
+            }
+
+            const hand = Number(handEl.dataset.hand);
+
+            if (draggedHand === hand) {
+                clearDragState();
+                return;
+            }
+
+            clearDragState();
+            draggedHand = hand;
+            handEl.classList.add("drag-source");
+            document.body.classList.add("dragging");
+            return;
+        }
+
+        if (person === "opponent" && draggedHand !== null && canDrop(handEl)) {
+            hitOpponent(handEl);
+        }
+    });
+
     handEl.addEventListener("input", () => updateSplitFromEdit(handEl));
 
     handEl.addEventListener("focus", () => {

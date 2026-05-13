@@ -4,6 +4,21 @@ A web implementation of the hand game [Chopsticks](rules.md), deployed via GitHu
 
 The bot is written in Rust and compiled to WebAssembly, then embedded into a JS module along with a prebuilt opening-position cache.
 
+## Setup
+
+You'll need:
+
+- [Rust](https://www.rust-lang.org/tools/install) (installs `cargo` and `rustup`)
+- [Node.js](https://nodejs.org/) (any recent version; only the built-in runtime is used, no `npm install` needed)
+
+After installing Rust, add the WebAssembly compilation target:
+
+```sh
+rustup target add wasm32-unknown-unknown
+```
+
+Without this target, `cargo build` will fail with `error[E0463]: can't find crate for 'std'`.
+
 ## Building
 
 To regenerate the static site at [`frontend/`](frontend/), run:
@@ -18,10 +33,21 @@ This script:
 2. Runs [`scripts/embed-wasm.mjs`](scripts/embed-wasm.mjs) to embed the resulting `.wasm` into [`frontend/bot_wasm.js`](frontend/bot_wasm.js).
 3. Runs [`scripts/prebuild-cache.mjs`](scripts/prebuild-cache.mjs) to generate [`frontend/bot_cache.js`](frontend/bot_cache.js).
 
-### Requirements
+## Testing locally
 
-- Rust toolchain with the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`)
-- Node.js
+The frontend is a static site, so any local HTTP server works. From the repo root:
+
+```sh
+python3 -m http.server -d frontend 8000
+```
+
+Then open <http://localhost:8000>.
+
+To run the Rust unit tests (host target, not wasm):
+
+```sh
+cargo test
+```
 
 ## Deployment
 
