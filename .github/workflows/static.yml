@@ -46,6 +46,8 @@ jobs:
         run: npm run format:check
       - name: Lint JS
         run: npm run lint
+      - name: Lint Markdown
+        run: npm run lint:md
       - name: Build static WASM frontend
         run: ./scripts/build-static-wasm.sh
       - name: Install Playwright browser

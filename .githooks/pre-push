@@ -5,3 +5,4 @@ cargo fmt --check
 npm run --silent format:check
 npm run --silent lint
 cargo test --quiet
+npm run --silent test:unit

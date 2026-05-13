@@ -6,15 +6,6 @@ Suggested next steps, roughly ordered by value.
 
 ## Deploy / build correctness
 
-- CI does not run `npm run lint:md`, even though [AGENTS.md](AGENTS.md) says it is the
-  pre-merge check for markdown changes. Add a step to
-  [.github/workflows/static.yml](.github/workflows/static.yml) so broken markdown
-  cannot land.
-- Git hooks ([.githooks/pre-commit](.githooks/pre-commit) and
-  [.githooks/pre-push](.githooks/pre-push)) check formatting and lints but not
-  the JS unit tests. `npm run test:unit` is fast (Node's built-in runner) — add
-  it at least to `pre-push` so the rules-module contract is verified locally.
-
 ## Code / structure
 
 - `chopsticks_bot_outcome`, `chopsticks_bot_cache_size`, and
