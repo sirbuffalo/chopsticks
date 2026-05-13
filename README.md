@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/sirbuffalo/chopsticks/actions/workflows/static.yml/badge.svg)](https://github.com/sirbuffalo/chopsticks/actions/workflows/static.yml)
 
-A web implementation of the hand game [Chopsticks](rules.md), deployed via GitHub Pages from the [`frontend/`](frontend/) directory.
+A web implementation of the hand game [Chopsticks](rules.md), deployed via GitHub Pages from the checked-in [`frontend/`](frontend/) directory.
 
-The bot is written in Rust and compiled to WebAssembly during the static-site build, then paired with a prebuilt opening-position cache.
+The bot is written in Rust, compiled to WebAssembly locally, and paired with a checked-in prebuilt opening-position cache.
 
 ## Setup
 
@@ -31,7 +31,7 @@ The build script ([`scripts/build-static-wasm.sh`](scripts/build-static-wasm.sh)
 
 ## Building
 
-To regenerate the static site at [`frontend/`](frontend/), run:
+To refresh the checked-in static bot artifacts under [`frontend/`](frontend/), run:
 
 ```sh
 ./scripts/build-static-wasm.sh
@@ -43,7 +43,7 @@ This script:
 2. Runs [`scripts/copy-wasm.mjs`](scripts/copy-wasm.mjs) to copy the resulting `.wasm` into [`frontend/chopsticks.wasm`](frontend/chopsticks.wasm).
 3. Runs [`scripts/prebuild-cache.mjs`](scripts/prebuild-cache.mjs) to generate [`frontend/bot_cache.js`](frontend/bot_cache.js).
 
-The generated [`frontend/chopsticks.wasm`](frontend/chopsticks.wasm) and [`frontend/bot_cache.js`](frontend/bot_cache.js) files are ignored by git. Re-run the build script after changing [`src/lib.rs`](src/lib.rs) or cache-relevant game logic, and before local browser testing.
+The generated [`frontend/chopsticks.wasm`](frontend/chopsticks.wasm) and [`frontend/bot_cache.js`](frontend/bot_cache.js) files are committed so GitHub Pages can deploy without rebuilding them in CI. Re-run the build script after changing [`src/lib.rs`](src/lib.rs) or cache-relevant game logic, and include the refreshed artifacts with that change.
 
 ## Testing locally
 
@@ -86,4 +86,4 @@ npm run lint:md
 
 ## Deployment
 
-Pushes to `master` trigger [`.github/workflows/static.yml`](.github/workflows/static.yml). CI runs the Rust and JS unit checks, runs `./scripts/build-static-wasm.sh`, uploads the generated [`frontend/`](frontend/) directory, and deploys it to GitHub Pages. Playwright tests are run locally with `npm run test:e2e`.
+Pushes to `master` trigger [`.github/workflows/static.yml`](.github/workflows/static.yml). CI runs the Rust and JS unit checks, uploads the checked-in [`frontend/`](frontend/) directory, and deploys it to GitHub Pages. Playwright tests and static WASM rebuilds are run locally.

@@ -1,5 +1,5 @@
-# Build, test, and deploy the static GitHub Pages frontend
-name: Build, test, and deploy static Pages
+# Test and deploy the static GitHub Pages frontend
+name: Test and deploy static Pages
 
 on:
   # Runs on pushes targeting the default branch
@@ -29,8 +29,6 @@ jobs:
         uses: actions/checkout@v5
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -48,8 +46,6 @@ jobs:
         run: npm run lint
       - name: Lint Markdown
         run: npm run lint:md
-      - name: Build static WASM frontend
-        run: ./scripts/build-static-wasm.sh
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact

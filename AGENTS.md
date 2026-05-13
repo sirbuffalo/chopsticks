@@ -12,7 +12,7 @@ Run `npm install` (or `npm ci`) before any `npm run …` command, including `lin
 - [src/main.rs](src/main.rs) — native CLI that uses `rusqlite` to precompute a solve database. **Gated by `cfg(not(target_arch = "wasm32"))`** in [Cargo.toml](Cargo.toml); it does **not** ship to the browser.
 - [frontend/](frontend/) — what GitHub Pages serves. Plain HTML/CSS/JS, no bundler.
 - [scripts/](scripts/) — Node build helpers (`.mjs`) and the top-level shell script.
-- [.github/workflows/static.yml](.github/workflows/static.yml) — builds the static WASM frontend, runs non-browser checks, uploads the generated `frontend/` artifact, and deploys it to Pages on push to `master`.
+- [.github/workflows/static.yml](.github/workflows/static.yml) — runs non-browser checks, uploads the checked-in `frontend/` artifact, and deploys it to Pages on push to `master`.
 
 ## Build pipeline
 
@@ -27,14 +27,12 @@ Env vars on the cache step:
 - `MAX_CACHE_DEPTH=N` — exploration depth.
 - `RESET_CACHE=1` — wipe and rebuild instead of expanding the existing cache.
 
-## Generated files — DO NOT HAND-EDIT
-
-One JS artifact has a generator banner at the top:
+## Generated deploy artifacts — DO NOT HAND-EDIT
 
 - [frontend/bot_cache.js](frontend/bot_cache.js) — regenerate via step 3 above.
 - [frontend/chopsticks.wasm](frontend/chopsticks.wasm) — regenerate via step 2 above.
 
-These files are ignored by git. CI regenerates them before deploying the `frontend/` artifact. Any local change to [src/lib.rs](src/lib.rs) or cache-relevant game logic requires re-running `./scripts/build-static-wasm.sh` before browser testing, otherwise the local frontend may use a stale bot.
+These generated files are committed so CI can deploy `frontend/` without rebuilding the bot. Any local change to [src/lib.rs](src/lib.rs) or cache-relevant game logic requires re-running `./scripts/build-static-wasm.sh`, then committing the refreshed [frontend/chopsticks.wasm](frontend/chopsticks.wasm) and [frontend/bot_cache.js](frontend/bot_cache.js), otherwise Pages may deploy a stale bot.
 
 ## Game-logic duplication
 
@@ -56,7 +54,7 @@ Hand pairs are canonicalized by sorting ascending (`canonicalPair` / `sortedPair
 
 ## Deploy
 
-Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, runs non-browser checks, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path.
+Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) runs non-browser checks, uploads the checked-in `frontend/` artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path.
 
 ## Conventions
 
@@ -71,7 +69,7 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 
 ## Things to verify before declaring done
 
-- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` before browser/e2e testing. Do not commit [frontend/chopsticks.wasm](frontend/chopsticks.wasm) or [frontend/bot_cache.js](frontend/bot_cache.js); they are generated and ignored.
+- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` before browser/e2e testing, and commit the refreshed [frontend/chopsticks.wasm](frontend/chopsticks.wasm) and [frontend/bot_cache.js](frontend/bot_cache.js).
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
 - If you touched JS under [frontend/](frontend/), [tests/](tests/), or [scripts/](scripts/): run `npm run format:check`, `npm run lint`, and `npm run test:unit`; use `npm run format` / `npm run lint:fix` for fixes.
