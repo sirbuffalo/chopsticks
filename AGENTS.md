@@ -19,6 +19,7 @@ Operational context for an agent (Claude, Codex, etc.) working in this repo. Pai
 3. [scripts/prebuild-cache.mjs](scripts/prebuild-cache.mjs) instantiates the wasm in Node, explores positions reachable within `MAX_CACHE_DEPTH` plies (default 12, override with env var), and writes [frontend/bot_cache.js](frontend/bot_cache.js).
 
 Env vars on the cache step:
+
 - `MAX_CACHE_DEPTH=N` — exploration depth.
 - `RESET_CACHE=1` — wipe and rebuild instead of expanding the existing cache.
 
@@ -66,3 +67,4 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
 - If you touched any frontend file: run `npx prettier --write frontend/` and verify clean with `npx prettier --check frontend/`.
+- If you touched any markdown file: run `npx markdownlint-cli2 "*.md"` and fix any errors.
