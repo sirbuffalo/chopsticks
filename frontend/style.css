@@ -1,0 +1,52 @@
+:root {
+    --grid-size: calc(100vmin / 15);
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    background-color: #bfa373;
+    padding: var(--grid-size);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.game {
+    box-sizing: border-box;
+    width: calc(var(--grid-size) * 13);
+    height: calc(var(--grid-size) * 13);
+
+    border-radius: calc(2 * var(--grid-size));
+    padding: var(--grid-size);
+
+    background-color: #b0925f;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--grid-size);
+}
+
+/* each player's area */
+.player-hands {
+    flex: 1;
+
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--grid-size);
+}
+
+/* the actual hand cards */
+.hand {
+    padding: var(--grid-size);
+    background-color: #d8c39a;
+    border-radius: var(--grid-size);
+    font-size: calc(var(--grid-size) * 3);
+    line-height: calc(var(--grid-size) * 3);
+    text-align: center;
+    color: #2e2a23;
+    z-index: 1;
+}
