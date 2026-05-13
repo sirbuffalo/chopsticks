@@ -56,7 +56,7 @@ Hand pairs are canonicalized by sorting ascending (`canonicalPair` / `sortedPair
 
 ## Deploy
 
-Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, tests it, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path; there is a [frontend/CNAME](frontend/CNAME) for the custom domain.
+Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, tests it, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path.
 
 ## Conventions
 
