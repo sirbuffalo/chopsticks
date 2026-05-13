@@ -1,5 +1,5 @@
 (function () {
-  function Toastify(options = {}) {
+  function Toastify(options) {
     const settings = {
       text: "",
       duration: 3000,

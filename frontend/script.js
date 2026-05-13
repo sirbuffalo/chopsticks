@@ -98,12 +98,10 @@ function render() {
     }
   }
 
-  let turnText = "";
+  let turnText;
   if (gameOver !== null) {
     turnText = TURN_INDICATOR_GAME_OVER_TEXT[gameOver];
-  } else if (choosingStart) {
-    turnText = "";
-  } else if (startChoiceClosing) {
+  } else if (choosingStart || startChoiceClosing) {
     turnText = "";
   } else if (rearranging) {
     turnText = "Rearrange your hands";
@@ -329,9 +327,8 @@ function hitOpponent(targetEl) {
   }
 
   const target = Number(targetEl.dataset.hand);
-  const after = (state.opponent[target] + state.user[selectedHand]) % MODULUS;
-
-  state.opponent[target] = after;
+  state.opponent[target] =
+    (state.opponent[target] + state.user[selectedHand]) % MODULUS;
   finishUserTurn();
 }
 
