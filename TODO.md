@@ -19,6 +19,6 @@ Suggested next steps, roughly ordered by value.
 
 ## Smaller polish
 
-- [ ] Favicon + meta description + OG tags on [frontend/index.html](frontend/index.html).
+- [x] Favicon + meta description + OG tags on [frontend/index.html](frontend/index.html).
 - [ ] Prune unreachable entries from `repetitionCounts` ([frontend/script.js:26](frontend/script.js#L26)) — grows unbounded per game; fine in practice, but tidy.
 - [ ] Surface [rules.md](rules.md) from the UI — a "Rules" link or expandable section.
