@@ -2,7 +2,7 @@
 
 A web implementation of the hand game [Chopsticks](rules.md), deployed via GitHub Pages from the [`frontend/`](frontend/) directory.
 
-The bot is written in Rust and compiled to WebAssembly, then embedded into a JS module along with a prebuilt opening-position cache.
+The bot is written in Rust and compiled to WebAssembly, shipped as a static asset, and paired with a prebuilt opening-position cache.
 
 ## Setup
 
@@ -30,7 +30,7 @@ To regenerate the static site at [`frontend/`](frontend/), run:
 This script:
 
 1. Builds the Rust library ([`src/lib.rs`](src/lib.rs)) for the `wasm32-unknown-unknown` target.
-2. Runs [`scripts/embed-wasm.mjs`](scripts/embed-wasm.mjs) to embed the resulting `.wasm` into [`frontend/bot_wasm.js`](frontend/bot_wasm.js).
+2. Runs [`scripts/copy-wasm.mjs`](scripts/copy-wasm.mjs) to copy the resulting `.wasm` into [`frontend/chopsticks.wasm`](frontend/chopsticks.wasm).
 3. Runs [`scripts/prebuild-cache.mjs`](scripts/prebuild-cache.mjs) to generate [`frontend/bot_cache.js`](frontend/bot_cache.js).
 
 ## Testing locally

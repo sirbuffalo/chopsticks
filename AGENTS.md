@@ -15,7 +15,7 @@ Operational context for an agent (Claude, Codex, etc.) working in this repo. Pai
 `./scripts/build-static-wasm.sh` runs three steps in order:
 
 1. `cargo build --target wasm32-unknown-unknown --release --lib` → `target/wasm32-unknown-unknown/release/chopsticks.wasm`
-2. [scripts/embed-wasm.mjs](scripts/embed-wasm.mjs) base64-encodes the wasm into `window.chopsticksBotWasmBase64` and writes [frontend/bot_wasm.js](frontend/bot_wasm.js).
+2. [scripts/copy-wasm.mjs](scripts/copy-wasm.mjs) copies the wasm into [frontend/chopsticks.wasm](frontend/chopsticks.wasm).
 3. [scripts/prebuild-cache.mjs](scripts/prebuild-cache.mjs) instantiates the wasm in Node, explores positions reachable within `MAX_CACHE_DEPTH` plies (default 12, override with env var), and writes [frontend/bot_cache.js](frontend/bot_cache.js).
 
 Env vars on the cache step:
@@ -25,10 +25,10 @@ Env vars on the cache step:
 
 ## Generated files — DO NOT HAND-EDIT
 
-Both have a generator banner at the top:
+One JS artifact has a generator banner at the top:
 
-- [frontend/bot_wasm.js](frontend/bot_wasm.js) — regenerate via step 2 above.
 - [frontend/bot_cache.js](frontend/bot_cache.js) — regenerate via step 3 above.
+- [frontend/chopsticks.wasm](frontend/chopsticks.wasm) — regenerate via step 2 above.
 
 These are committed to git so the no-CI-build Pages deploy works. Any change to [src/lib.rs](src/lib.rs) requires re-running `./scripts/build-static-wasm.sh` and committing the regenerated files, otherwise the deployed site silently ships a stale bot.
 
@@ -63,8 +63,9 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 
 ## Things to verify before declaring done
 
-- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` and committed [frontend/bot_wasm.js](frontend/bot_wasm.js) + [frontend/bot_cache.js](frontend/bot_cache.js).
+- If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` and committed [frontend/chopsticks.wasm](frontend/chopsticks.wasm) + [frontend/bot_cache.js](frontend/bot_cache.js).
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
 - If you touched any frontend file: run `npx prettier --write frontend/` and verify clean with `npx prettier --check frontend/`.
 - If you touched any markdown file: run `npx markdownlint-cli2 "*.md"` and fix any errors.
+- If you start a local web server or any other long-running process for agentic testing, stop it before declaring done. Do not leave software running for the user to clean up.

@@ -43,28 +43,35 @@ const BANNER_TITLES = {
 };
 
 async function loadBotWasm() {
-  if (window.chopsticksBotWasmBase64) {
-    const binary = atob(window.chopsticksBotWasmBase64);
-    const bytes = new Uint8Array(binary.length);
+  const wasmUrl = new URL("chopsticks.wasm", window.location.href);
 
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
+  async function instantiateFromBytes() {
+    const response = await fetch(wasmUrl);
+    if (!response.ok) {
+      throw new Error(`WASM request failed with status ${response.status}`);
     }
 
+    const bytes = await response.arrayBuffer();
     const { instance } = await WebAssembly.instantiate(bytes);
     return instance.exports;
   }
 
-  const wasmUrl = new URL(
-    "../target/wasm32-unknown-unknown/release/chopsticks.wasm",
-    window.location.href,
-  );
-
   try {
-    const response = await fetch(wasmUrl);
-    const bytes = await response.arrayBuffer();
-    const { instance } = await WebAssembly.instantiate(bytes);
-    return instance.exports;
+    if (WebAssembly.instantiateStreaming) {
+      try {
+        const { instance } = await WebAssembly.instantiateStreaming(
+          fetch(wasmUrl),
+        );
+        return instance.exports;
+      } catch (error) {
+        console.warn(
+          "Streaming WASM instantiation failed; falling back to ArrayBuffer.",
+          error,
+        );
+      }
+    }
+
+    return await instantiateFromBytes();
   } catch (error) {
     console.error(
       "Could not load Chopsticks WASM bot. Run `scripts/build-static-wasm.sh`.",

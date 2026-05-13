@@ -9,14 +9,14 @@ Suggested next steps, roughly ordered by value.
 ## Deploy / build correctness
 
 - [ ] **CI doesn't verify generated artifacts are fresh.** [.github/workflows/static.yml](.github/workflows/static.yml) just uploads `frontend/`. If someone edits [src/lib.rs](src/lib.rs) and forgets to run the build script, the deploy silently ships a stale bot. Pick one:
-  - Run `./scripts/build-static-wasm.sh` in CI and stop tracking [frontend/bot_wasm.js](frontend/bot_wasm.js) / [frontend/bot_cache.js](frontend/bot_cache.js) (~115KB of generated JS out of git).
+  - Run `./scripts/build-static-wasm.sh` in CI and stop tracking [frontend/chopsticks.wasm](frontend/chopsticks.wasm) / [frontend/bot_cache.js](frontend/bot_cache.js) (~90KB of generated artifacts out of git).
   - Or keep them tracked and add a `--check` mode that rebuilds and `git diff --exit-code`s, failing CI on staleness.
-- [ ] **Drop base64-embedded WASM.** [frontend/bot_wasm.js](frontend/bot_wasm.js) is 113KB; the raw `.wasm` is ~85KB and gzips well. Ship `chopsticks.wasm` as a static asset and use `WebAssembly.instantiateStreaming(fetch(...))`.
+- [x] **Drop base64-embedded WASM.** Ship [frontend/chopsticks.wasm](frontend/chopsticks.wasm) as a static asset and use `WebAssembly.instantiateStreaming(fetch(...))`.
 - [ ] **Tune release profile.** [Cargo.toml](Cargo.toml) has no `[profile.release]`. Add `lto = true`, `codegen-units = 1`, `opt-level = "z"`, `strip = true` to shrink the WASM.
 
 ## Code / structure
 
-- [ ] **Replace script-tag globals with ES modules.** `window.chopsticksBotWasmBase64`, `window.chopsticksPrebuiltBotCache`, and `window.chopsticksPrebuiltBotCacheDepth` are all globals. Switch to `<script type="module">` and split [frontend/script.js](frontend/script.js) (530 lines covering rendering, drag, rearrange, repetition tracking, bot caching, WASM loading) into focused modules.
+- [ ] **Replace script-tag globals with ES modules.** `window.chopsticksPrebuiltBotCache` and `window.chopsticksPrebuiltBotCacheDepth` are globals. Switch to `<script type="module">` and split [frontend/script.js](frontend/script.js) (530 lines covering rendering, drag, rearrange, repetition tracking, bot caching, WASM loading) into focused modules.
 - [ ] **Tests.** The Rust solver in [src/lib.rs](src/lib.rs) is doing real minimax work — add regression tests against known terminal positions. Same for the repetition-rule logic in JS (`wouldRepeat`, `hasLegalUserMove`).
 
 ## Smaller polish
