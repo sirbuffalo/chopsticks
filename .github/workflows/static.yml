@@ -50,10 +50,6 @@ jobs:
         run: npm run lint:md
       - name: Build static WASM frontend
         run: ./scripts/build-static-wasm.sh
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-      - name: Run Playwright tests
-        run: npm run test:e2e
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact

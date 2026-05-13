@@ -12,7 +12,7 @@ Run `npm install` (or `npm ci`) before any `npm run …` command, including `lin
 - [src/main.rs](src/main.rs) — native CLI that uses `rusqlite` to precompute a solve database. **Gated by `cfg(not(target_arch = "wasm32"))`** in [Cargo.toml](Cargo.toml); it does **not** ship to the browser.
 - [frontend/](frontend/) — what GitHub Pages serves. Plain HTML/CSS/JS, no bundler.
 - [scripts/](scripts/) — Node build helpers (`.mjs`) and the top-level shell script.
-- [.github/workflows/static.yml](.github/workflows/static.yml) — builds the static WASM frontend, runs Playwright tests, uploads the generated `frontend/` artifact, and deploys it to Pages on push to `master`.
+- [.github/workflows/static.yml](.github/workflows/static.yml) — builds the static WASM frontend, runs non-browser checks, uploads the generated `frontend/` artifact, and deploys it to Pages on push to `master`.
 
 ## Build pipeline
 
@@ -34,7 +34,7 @@ One JS artifact has a generator banner at the top:
 - [frontend/bot_cache.js](frontend/bot_cache.js) — regenerate via step 3 above.
 - [frontend/chopsticks.wasm](frontend/chopsticks.wasm) — regenerate via step 2 above.
 
-These files are ignored by git. CI regenerates them before browser tests and deploys the tested `frontend/` artifact. Any local change to [src/lib.rs](src/lib.rs) or cache-relevant game logic requires re-running `./scripts/build-static-wasm.sh` before browser testing, otherwise the local frontend may use a stale bot.
+These files are ignored by git. CI regenerates them before deploying the `frontend/` artifact. Any local change to [src/lib.rs](src/lib.rs) or cache-relevant game logic requires re-running `./scripts/build-static-wasm.sh` before browser testing, otherwise the local frontend may use a stale bot.
 
 ## Game-logic duplication
 
@@ -56,7 +56,7 @@ Hand pairs are canonicalized by sorting ascending (`canonicalPair` / `sortedPair
 
 ## Deploy
 
-Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, tests it, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path.
+Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml) builds `frontend/`, runs non-browser checks, uploads the generated artifact, and deploys it to Pages. Live site is served from the `frontend/` directory at the root path.
 
 ## Conventions
 

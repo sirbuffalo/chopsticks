@@ -86,4 +86,4 @@ npm run lint:md
 
 ## Deployment
 
-Pushes to `master` trigger [`.github/workflows/static.yml`](.github/workflows/static.yml). CI runs `./scripts/build-static-wasm.sh`, runs the Playwright tests against the generated static site, uploads the generated [`frontend/`](frontend/) directory, and deploys that tested artifact to GitHub Pages.
+Pushes to `master` trigger [`.github/workflows/static.yml`](.github/workflows/static.yml). CI runs the Rust and JS unit checks, runs `./scripts/build-static-wasm.sh`, uploads the generated [`frontend/`](frontend/) directory, and deploys it to GitHub Pages. Playwright tests are run locally with `npm run test:e2e`.
