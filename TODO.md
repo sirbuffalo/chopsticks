@@ -19,6 +19,6 @@ Suggested next steps, roughly ordered by value.
   - `hasLegalUserMove` is false for terminal dead-hand states, true when either a hit or split avoids repetition, and false when every hit and split would repeat.
   - `applyPackedHands` and `packedToState` preserve the Rust/JS u16 nibble contract.
 - [x] **Bot repetition fallback tests.** Add focused Playwright coverage around [frontend/bot.js](frontend/bot.js) with mocked `bot_cache.js` and WASM exports. Prove the bot skips prebuilt and top-ranked moves that would repeat, uses the first ranked non-repeating move, and returns `null` so the app declares a draw when no ranked move avoids repetition.
-- [ ] **Test command wiring.** Once the focused suites above exist, wire CI to run `cargo test`, `npm run test:unit`, `npm run format:check`, `npm run lint`, and the existing Playwright tests before deployment.
+- [x] **Test command wiring.** Once the focused suites above exist, wire CI to run `cargo test`, `npm run test:unit`, `npm run format:check`, `npm run lint`, and the existing Playwright tests before deployment.
 
 ## Smaller polish
