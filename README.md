@@ -1,5 +1,7 @@
 # Chopsticks
 
+[![CI](https://github.com/sirbuffalo/chopsticks/actions/workflows/static.yml/badge.svg)](https://github.com/sirbuffalo/chopsticks/actions/workflows/static.yml)
+
 A web implementation of the hand game [Chopsticks](rules.md), deployed via GitHub Pages from the [`frontend/`](frontend/) directory.
 
 The bot is written in Rust and compiled to WebAssembly, shipped as a static asset, and paired with a prebuilt opening-position cache.
