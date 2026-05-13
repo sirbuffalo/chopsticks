@@ -56,6 +56,15 @@ function recordPosition(turn, candidate = currentState()) {
   recordRepetitionPosition(repetitionCounts, turn, candidate);
 }
 
+function preserveVisiblePairOrder(previous, next) {
+  const orderedScore =
+    Number(previous[0] === next[0]) + Number(previous[1] === next[1]);
+  const reversedScore =
+    Number(previous[0] === next[1]) + Number(previous[1] === next[0]);
+
+  return reversedScore > orderedScore ? [next[1], next[0]] : [...next];
+}
+
 function render() {
   ui.render({
     state,
@@ -132,7 +141,13 @@ async function botTurn() {
   }
 
   if (next !== undefined) {
+    const previous = currentState();
     applyPackedHands(state, next);
+    state.user = preserveVisiblePairOrder(previous.user, state.user);
+    state.opponent = preserveVisiblePairOrder(
+      previous.opponent,
+      state.opponent,
+    );
     recordPosition("user");
   }
 
@@ -155,7 +170,6 @@ function hitOpponent(targetEl) {
   const after = (state.opponent[target] + state.user[draggedHand]) % MODULUS;
 
   state.opponent[target] = after;
-  state.opponent = canonicalPair(state.opponent);
   finishUserTurn();
 }
 
@@ -188,7 +202,6 @@ function toggleRearrange() {
   }
 
   rearranging = false;
-  state.user = canonicalPair(state.user);
   finishUserTurn();
 }
 

@@ -71,8 +71,36 @@ test("user can hit an opponent hand and see the deterministic bot reply", async 
   await expect(page.locator(".rearrange")).toBeDisabled();
 
   await expectHands(page, "user", [1, 2]);
-  await expectHands(page, "opponent", [1, 2]);
+  await expectHands(page, "opponent", [2, 1]);
   await expect(page.locator(".rearrange")).toBeEnabled();
+});
+
+test("user hit preserves the visible opponent hand that was clicked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const originalSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = (callback, delay, ...args) => {
+      if (delay === 250) {
+        return 0;
+      }
+
+      return originalSetTimeout(callback, delay, ...args);
+    };
+  });
+  await page.goto("/");
+
+  await hand(page, "user", 0).click();
+  await hand(page, "opponent", 0).click();
+
+  await expectHands(page, "opponent", [2, 1]);
+
+  await page.reload();
+
+  await hand(page, "user", 0).click();
+  await hand(page, "opponent", 1).click();
+
+  await expectHands(page, "opponent", [1, 2]);
 });
 
 test("rearrange mode edits in-memory state and cancel restores it", async ({
