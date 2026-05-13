@@ -11,7 +11,6 @@ Suggested next steps, roughly ordered by value.
 - [ ] **CI doesn't verify generated artifacts are fresh.** [.github/workflows/static.yml](.github/workflows/static.yml) just uploads `frontend/`. If someone edits [src/lib.rs](src/lib.rs) and forgets to run the build script, the deploy silently ships a stale bot. Pick one:
   - Run `./scripts/build-static-wasm.sh` in CI and stop tracking [frontend/chopsticks.wasm](frontend/chopsticks.wasm) / [frontend/bot_cache.js](frontend/bot_cache.js) (~90KB of generated artifacts out of git).
   - Or keep them tracked and add a `--check` mode that rebuilds and `git diff --exit-code`s, failing CI on staleness.
-- [x] **Drop base64-embedded WASM.** Ship [frontend/chopsticks.wasm](frontend/chopsticks.wasm) as a static asset and use `WebAssembly.instantiateStreaming(fetch(...))`.
 - [ ] **Tune release profile.** [Cargo.toml](Cargo.toml) has no `[profile.release]`. Add `lto = true`, `codegen-units = 1`, `opt-level = "z"`, `strip = true` to shrink the WASM.
 
 ## Code / structure

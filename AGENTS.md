@@ -56,9 +56,11 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 
 ## Conventions
 
-- 4-space indent in JS, standard `rustfmt` defaults in Rust (no `rustfmt.toml` yet).
-- No tests, no linter config — if you add either, wire it into the workflow.
-- No bundler, no npm dependencies beyond Node's stdlib — keep it that way unless asked.
+- JS formatting is controlled by Prettier through `npm run format` / `npm run format:check`; do not hand-format around it.
+- Rust formatting uses `cargo fmt` with the repo's [rustfmt.toml](rustfmt.toml).
+- JS linting is configured in [eslint.config.js](eslint.config.js); run `npm run lint` or `npm run lint:fix`.
+- Rust unit tests exist in [src/lib.rs](src/lib.rs) and [src/main.rs](src/main.rs); run `cargo test`.
+- There is no frontend bundler. `package.json` is for development tooling (`prettier`, `eslint`, `globals`) and hook setup, not for shipping bundled assets.
 - Frontend uses `<script src>` globals, not ES modules. New code should match unless the task is explicitly to modularize.
 
 ## Things to verify before declaring done
@@ -66,6 +68,7 @@ Push to `master` → [.github/workflows/static.yml](.github/workflows/static.yml
 - If you touched [src/lib.rs](src/lib.rs): re-ran `./scripts/build-static-wasm.sh` and committed [frontend/chopsticks.wasm](frontend/chopsticks.wasm) + [frontend/bot_cache.js](frontend/bot_cache.js).
 - If you touched repetition / legal-move logic: mirrored the change across all three sites listed above.
 - If you touched the frontend: opened [frontend/index.html](frontend/index.html) in a browser and played a turn. No CI catches behavioral regressions.
-- If you touched any frontend file: run `npx prettier --write frontend/` and verify clean with `npx prettier --check frontend/`.
+- If you touched JS under [frontend/script.js](frontend/script.js) or [scripts/](scripts/): run `npm run format:check` and `npm run lint`; use `npm run format` / `npm run lint:fix` for fixes.
+- If you touched Rust: run `cargo fmt --check` and `cargo test`.
 - If you touched any markdown file: run `npx markdownlint-cli2 "*.md"` and fix any errors.
 - If you start a local web server or any other long-running process for agentic testing, stop it before declaring done. Do not leave software running for the user to clean up.
