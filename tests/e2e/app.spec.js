@@ -59,6 +59,21 @@ test("app boots with the main UI and no console errors", async ({ page }) => {
   await expect(page.locator(".banner-wrapper")).toBeHidden();
 });
 
+test("rules button opens and closes the rules dialog", async ({ page }) => {
+  await page.goto("/");
+
+  const dialog = page.locator(".rules-dialog");
+  await page.getByRole("button", { name: "Open rules" }).click();
+
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();
+  await expect(dialog).toContainText("Hands wrap at 5");
+  await expect(dialog).toContainText("Keyboard: Tab or arrow keys move focus.");
+
+  await page.getByRole("button", { name: "Close rules" }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test("user can hit an opponent hand and see the deterministic bot reply", async ({
   page,
 }) => {

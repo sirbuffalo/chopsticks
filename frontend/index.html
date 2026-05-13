@@ -65,7 +65,40 @@
         </div>
       </div>
       <div class="toast" aria-live="polite"></div>
+      <button class="rules-open" type="button" aria-label="Open rules">
+        ?
+      </button>
     </div>
+
+    <dialog class="rules-dialog" aria-labelledby="rules-title">
+      <div class="rules-panel">
+        <div class="rules-header">
+          <h1 id="rules-title">Rules</h1>
+          <button class="rules-close" type="button" aria-label="Close rules">
+            x
+          </button>
+        </div>
+        <div class="rules-content">
+          <p>
+            Tap one of the bot's hands with one of yours. The bot's hand
+            increases by your hand's value.
+          </p>
+          <p>Hands wrap at 5, so 5 becomes 0 and that hand is out.</p>
+          <p>You win by making both bot hands 0.</p>
+          <p>
+            Instead of tapping, you can rearrange your own hands as long as the
+            total stays the same and the result is a real change.
+          </p>
+          <p>
+            A position cannot appear for the third time. If no legal move
+            remains, the game is a draw.
+          </p>
+          <p class="rules-keyboard">
+            Keyboard: Tab or arrow keys move focus. Enter or Space selects.
+          </p>
+        </div>
+      </div>
+    </dialog>
 
     <script type="module" src="script.js"></script>
   </body>

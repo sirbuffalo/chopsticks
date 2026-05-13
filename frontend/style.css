@@ -38,6 +38,31 @@ body {
   gap: var(--grid-size);
 }
 
+.rules-open {
+  position: absolute;
+  top: calc(var(--grid-size) * -0.25);
+  right: calc(var(--grid-size) * -0.25);
+  width: calc(var(--grid-size) * 1.5);
+  height: calc(var(--grid-size) * 1.5);
+  border: 0;
+  border-radius: 50%;
+  background-color: #2e2a23;
+  color: #ead9b2;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: calc(var(--grid-size) * 0.95);
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  z-index: 5;
+}
+
+.rules-open:focus-visible,
+.rules-close:focus-visible {
+  outline: calc(var(--grid-size) * 0.12) solid #ead9b2;
+  outline-offset: calc(var(--grid-size) * 0.12);
+}
+
 /* each player's area */
 .player-hands {
   flex: 0 0 calc(var(--grid-size) * 6);
@@ -233,4 +258,82 @@ body {
 .toast.visible {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+.rules-dialog {
+  width: min(calc(var(--grid-size) * 14), calc(100dvw - var(--grid-size) * 2));
+  max-height: calc(100dvh - var(--grid-size) * 2);
+  border: 0;
+  border-radius: var(--grid-size);
+  padding: 0;
+  background: transparent;
+  color: #ead9b2;
+  font-family: inherit;
+}
+
+.rules-dialog::backdrop {
+  background-color: rgba(46, 42, 35, 0.45);
+}
+
+.rules-panel {
+  box-sizing: border-box;
+  max-height: calc(100dvh - var(--grid-size) * 2);
+  overflow: hidden;
+  background-color: #2e2a23;
+  border-radius: var(--grid-size);
+  box-shadow: 0 calc(var(--grid-size) * 0.35) calc(var(--grid-size) * 0.9)
+    rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-size);
+  padding: var(--grid-size) var(--grid-size) 0;
+}
+
+.rules-header h1 {
+  margin: 0;
+  font-size: calc(var(--grid-size) * 1.45);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rules-close {
+  width: calc(var(--grid-size) * 1.6);
+  height: calc(var(--grid-size) * 1.6);
+  border: 0;
+  border-radius: 50%;
+  background-color: #ead9b2;
+  color: #2e2a23;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: calc(var(--grid-size) * 1.25);
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.rules-content {
+  overflow-y: auto;
+  touch-action: pan-y;
+  padding: calc(var(--grid-size) * 0.7) var(--grid-size) var(--grid-size);
+}
+
+.rules-content p {
+  margin: 0 0 calc(var(--grid-size) * 0.65);
+  font-size: calc(var(--grid-size) * 0.72);
+  line-height: 1.25;
+}
+
+.rules-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rules-keyboard {
+  color: #d8c39a;
 }

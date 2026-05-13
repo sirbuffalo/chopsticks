@@ -13,6 +13,9 @@ export function createUi() {
   const bannerTitle = document.querySelector(".banner-title");
   const playAgainButton = document.querySelector(".play-again");
   const toastEl = document.querySelector(".toast");
+  const rulesButton = document.querySelector(".rules-open");
+  const rulesDialog = document.querySelector(".rules-dialog");
+  const rulesCloseButton = document.querySelector(".rules-close");
   let toastTimer = null;
 
   function showToast(message) {
@@ -33,6 +36,25 @@ export function createUi() {
       toastTimer = null;
     }
     toastEl.classList.remove("visible");
+  }
+
+  function openRules() {
+    clearToast();
+    if (rulesDialog.open) {
+      return;
+    }
+
+    rulesDialog.showModal();
+  }
+
+  function closeRules() {
+    if (rulesDialog.open) {
+      rulesDialog.close();
+    }
+  }
+
+  function isRulesOpen() {
+    return rulesDialog.open;
   }
 
   function clearDragState() {
@@ -186,16 +208,22 @@ export function createUi() {
     rearrangeButton,
     cancelButton,
     playAgainButton,
+    rulesButton,
+    rulesCloseButton,
+    rulesDialog,
     blurActiveHand,
     clearDragState,
     clearToast,
+    closeRules,
     focusAdjacentHand,
     focusFirstPlayableUserHand,
     focusFirstTargetHand,
     focusFirstUserHand,
     focusLastPlayableUserHand,
+    isRulesOpen,
     markDragSource,
     markDropTarget,
+    openRules,
     placeCaretAtEnd,
     render,
     showToast,

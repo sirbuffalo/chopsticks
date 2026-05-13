@@ -331,6 +331,13 @@ function updateSplitFromEdit(handEl) {
 ui.rearrangeButton.addEventListener("click", toggleRearrange);
 ui.cancelButton.addEventListener("click", cancelRearrange);
 ui.playAgainButton.addEventListener("click", resetGame);
+ui.rulesButton.addEventListener("click", ui.openRules);
+ui.rulesCloseButton.addEventListener("click", ui.closeRules);
+ui.rulesDialog.addEventListener("click", (event) => {
+  if (event.target === ui.rulesDialog) {
+    ui.closeRules();
+  }
+});
 
 for (const handEl of ui.hands) {
   handEl.addEventListener("dragstart", (event) => {
@@ -457,6 +464,10 @@ for (const handEl of ui.hands) {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (ui.isRulesOpen()) {
+    return;
+  }
+
   if (event.key === "Tab" && !rearranging) {
     keyboardMode = true;
   }
