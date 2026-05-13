@@ -22,6 +22,7 @@ body {
 }
 
 .game {
+    position: relative;
     box-sizing: border-box;
     width: calc(var(--grid-size) * 15);
     height: calc(var(--grid-size) * 18);
@@ -149,4 +150,74 @@ body {
 
 .rearrange-actions.editing .rearrange-cancel {
     display: grid;
+}
+
+.banner-wrapper {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.banner-wrapper[hidden] {
+    display: none;
+}
+
+.banner {
+    pointer-events: auto;
+    background-color: #2e2a23;
+    color: #ead9b2;
+    border-radius: var(--grid-size);
+    padding: var(--grid-size) calc(var(--grid-size) * 1.5);
+    display: flex;
+    align-items: center;
+    gap: calc(var(--grid-size) * 1.25);
+    box-shadow: 0 calc(var(--grid-size) * 0.3) calc(var(--grid-size) * 0.6) rgba(0, 0, 0, 0.25);
+}
+
+.banner-title {
+    font-size: calc(var(--grid-size) * 1.6);
+    line-height: 1;
+}
+
+.play-again {
+    height: calc(var(--grid-size) * 2);
+    padding: 0 var(--grid-size);
+    border: 0;
+    border-radius: var(--grid-size);
+    background-color: #ead9b2;
+    color: #2e2a23;
+    font-family: inherit;
+    font-size: calc(var(--grid-size) * 1);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+}
+
+.toast {
+    position: absolute;
+    top: var(--grid-size);
+    left: 50%;
+    background-color: #2e2a23;
+    color: #ead9b2;
+    border-radius: var(--grid-size);
+    padding: calc(var(--grid-size) * 0.5) var(--grid-size);
+    font-size: calc(var(--grid-size) * 0.9);
+    line-height: 1.1;
+    max-width: calc(var(--grid-size) * 13);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, calc(var(--grid-size) * -0.75));
+    transition: opacity 180ms ease, transform 180ms ease;
+    z-index: 20;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }

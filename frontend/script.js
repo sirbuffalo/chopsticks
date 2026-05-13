@@ -13,17 +13,34 @@ let rearranging = false;
 let rearrangeTotal = 0;
 let rearrangeStart = [1, 1];
 let userTurnActive = true;
-let gameDraw = false;
+let gameOver = null;
+let toastTimer = null;
+
+const REPETITION_MESSAGE = "That position has already appeared twice.";
 
 const hands = Array.from(document.querySelectorAll(".hand"));
 const rearrangeButton = document.querySelector(".rearrange");
 const cancelButton = document.querySelector(".rearrange-cancel");
 const actions = document.querySelector(".rearrange-actions");
+const bannerWrapper = document.querySelector(".banner-wrapper");
+const bannerTitle = document.querySelector(".banner-title");
+const playAgainButton = document.querySelector(".play-again");
+const toastEl = document.querySelector(".toast");
 const botWasmPromise = loadBotWasm();
 const prebuiltBotMoveCache = new Map(window.chopsticksPrebuiltBotCache ?? []);
 const botMoveCache = new Map();
 const botCacheLimit = Math.max(BOT_CACHE_LIMIT, prebuiltBotMoveCache.size);
 const repetitionCounts = new Map();
+
+function isGameOver() {
+  return gameOver !== null;
+}
+
+const BANNER_TITLES = {
+  "user-win": "You win!",
+  "bot-win": "You lose.",
+  draw: "Draw.",
+};
 
 async function loadBotWasm() {
   if (window.chopsticksBotWasmBase64) {
@@ -63,7 +80,7 @@ function handValue(person, hand) {
 
 function canDrag(handEl) {
   return (
-    !gameDraw &&
+    !isGameOver() &&
     userTurnActive &&
     !rearranging &&
     handEl.dataset.person === "user" &&
@@ -72,14 +89,29 @@ function canDrag(handEl) {
 }
 
 function canDrop(targetEl) {
-  return (
-    !gameDraw &&
-    userTurnActive &&
-    draggedHand !== null &&
-    targetEl.dataset.person === "opponent" &&
-    handValue("opponent", Number(targetEl.dataset.hand)) > 0 &&
-    legalHitState(targetEl) !== null
-  );
+  if (isGameOver() || !userTurnActive || draggedHand === null) {
+    return false;
+  }
+  if (targetEl.dataset.person !== "opponent") {
+    return false;
+  }
+  return hitIssue(draggedHand, Number(targetEl.dataset.hand)) === "none";
+}
+
+function hitIssue(attacker, target) {
+  if (state.user[attacker] === 0) {
+    return "no-attacker";
+  }
+  if (state.opponent[target] === 0) {
+    return "dead";
+  }
+
+  const candidate = currentState();
+  candidate.opponent[target] =
+    (state.opponent[target] + state.user[attacker]) % MODULUS;
+  candidate.opponent = canonicalPair(candidate.opponent);
+
+  return wouldRepeat("bot", candidate) ? "would-repeat" : "none";
 }
 
 function hasLiveHands(person) {
@@ -92,11 +124,12 @@ function render() {
     const hand = Number(handEl.dataset.hand);
     const value = handValue(person, hand);
     const editable = rearranging && person === "user";
-    const inactiveUserHand = person === "user" && (!userTurnActive || gameDraw);
+    const inactiveUserHand =
+      person === "user" && (!userTurnActive || isGameOver());
 
     handEl.textContent = value;
     handEl.draggable =
-      !gameDraw &&
+      !isGameOver() &&
       !editable &&
       userTurnActive &&
       person === "user" &&
@@ -112,14 +145,33 @@ function render() {
 
   rearrangeButton.textContent = rearranging ? "Confirm" : "Rearrange";
   rearrangeButton.disabled = rearranging
-    ? !isValidRearrange()
-    : !userTurnActive || gameDraw;
+    ? rearrangeIssue() === "unchanged"
+    : !userTurnActive || isGameOver();
   cancelButton.disabled = !rearranging;
   actions.classList.toggle("editing", rearranging);
   actions.classList.toggle(
     "inactive",
-    (!userTurnActive || gameDraw) && !rearranging,
+    (!userTurnActive || isGameOver()) && !rearranging,
   );
+
+  if (isGameOver()) {
+    bannerTitle.textContent = BANNER_TITLES[gameOver];
+    bannerWrapper.hidden = false;
+  } else {
+    bannerWrapper.hidden = true;
+  }
+}
+
+function showToast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add("visible");
+  if (toastTimer !== null) {
+    clearTimeout(toastTimer);
+  }
+  toastTimer = window.setTimeout(() => {
+    toastEl.classList.remove("visible");
+    toastTimer = null;
+  }, 2500);
 }
 
 function currentState() {
@@ -256,13 +308,17 @@ function calculateBotMove(bot) {
 
 function finishUserTurn() {
   userTurnActive = false;
-  recordPosition("bot");
   clearDragState();
-  render();
 
-  if (hasLiveHands("opponent")) {
-    window.setTimeout(botTurn, 250);
+  if (!hasLiveHands("opponent")) {
+    gameOver = "user-win";
+    render();
+    return;
   }
+
+  recordPosition("bot");
+  render();
+  window.setTimeout(botTurn, 250);
 }
 
 function hasLegalUserMove() {
@@ -320,7 +376,7 @@ async function botTurn() {
   if (bot?.chopsticks_bot_next_state) {
     const next = calculateBotMove(bot);
     if (next === null) {
-      gameDraw = true;
+      gameOver = "draw";
       render();
       return;
     }
@@ -332,32 +388,26 @@ async function botTurn() {
     );
   }
 
-  userTurnActive = hasLiveHands("user") && hasLegalUserMove();
-  gameDraw = !userTurnActive;
+  if (!hasLiveHands("user")) {
+    gameOver = "bot-win";
+  } else if (!hasLegalUserMove()) {
+    gameOver = "draw";
+  } else {
+    userTurnActive = true;
+  }
   render();
 }
 
-function legalHitState(targetEl) {
-  const attacker = draggedHand;
-  const target = Number(targetEl.dataset.hand);
-  const amount = state.user[attacker];
-  const before = state.opponent[target];
-  const after = (before + amount) % MODULUS;
-  const candidate = currentState();
-
-  candidate.opponent[target] = after;
-  candidate.opponent = canonicalPair(candidate.opponent);
-
-  return wouldRepeat("bot", candidate) ? null : candidate;
-}
-
 function hitOpponent(targetEl) {
-  const candidate = legalHitState(targetEl);
-  if (!canDrop(targetEl) || candidate === null) {
+  if (!canDrop(targetEl)) {
     return;
   }
 
-  state.opponent = candidate.opponent;
+  const target = Number(targetEl.dataset.hand);
+  const after = (state.opponent[target] + state.user[draggedHand]) % MODULUS;
+
+  state.opponent[target] = after;
+  state.opponent = canonicalPair(state.opponent);
   finishUserTurn();
 }
 
@@ -372,7 +422,7 @@ function clearDragState() {
 function toggleRearrange() {
   clearDragState();
 
-  if (gameDraw || (!userTurnActive && !rearranging)) {
+  if (isGameOver() || (!userTurnActive && !rearranging)) {
     return;
   }
 
@@ -384,8 +434,15 @@ function toggleRearrange() {
     return;
   }
 
-  if (!isValidRearrange()) {
+  const issue = rearrangeIssue();
+
+  if (issue === "unchanged") {
     render();
+    return;
+  }
+
+  if (issue === "would-repeat") {
+    showToast(REPETITION_MESSAGE);
     return;
   }
 
@@ -420,22 +477,45 @@ function sortedPair(values) {
   return [...values].sort((left, right) => left - right);
 }
 
-function isValidRearrange() {
+function rearrangeIssue() {
   if (!rearranging) {
-    return true;
+    return "none";
   }
 
   const before = sortedPair(rearrangeStart);
   const after = sortedPair(state.user);
 
   if (before[0] === after[0] && before[1] === after[1]) {
-    return false;
+    return "unchanged";
   }
 
-  return !wouldRepeat("bot", {
+  return wouldRepeat("bot", {
     user: after,
     opponent: canonicalPair(state.opponent),
-  });
+  })
+    ? "would-repeat"
+    : "none";
+}
+
+function resetGame() {
+  state.user = [1, 1];
+  state.opponent = [1, 1];
+  draggedHand = null;
+  rearranging = false;
+  rearrangeTotal = 0;
+  rearrangeStart = [1, 1];
+  userTurnActive = true;
+  gameOver = null;
+  repetitionCounts.clear();
+  botMoveCache.clear();
+  if (toastTimer !== null) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  toastEl.classList.remove("visible");
+  clearDragState();
+  recordPosition("user");
+  render();
 }
 
 function placeCaretAtEnd(element) {
@@ -467,6 +547,7 @@ function updateSplitFromEdit(handEl) {
 
 rearrangeButton.addEventListener("click", toggleRearrange);
 cancelButton.addEventListener("click", cancelRearrange);
+playAgainButton.addEventListener("click", resetGame);
 
 for (const handEl of hands) {
   handEl.addEventListener("dragstart", (event) => {
@@ -487,6 +568,17 @@ for (const handEl of hands) {
   handEl.addEventListener("dragenter", () => {
     if (canDrop(handEl)) {
       handEl.classList.add("drop-target");
+      return;
+    }
+
+    if (
+      !isGameOver() &&
+      userTurnActive &&
+      draggedHand !== null &&
+      handEl.dataset.person === "opponent" &&
+      hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
+    ) {
+      showToast(REPETITION_MESSAGE);
     }
   });
 
@@ -534,8 +626,16 @@ for (const handEl of hands) {
       return;
     }
 
-    if (person === "opponent" && draggedHand !== null && canDrop(handEl)) {
-      hitOpponent(handEl);
+    if (person === "opponent" && draggedHand !== null) {
+      if (canDrop(handEl)) {
+        hitOpponent(handEl);
+      } else if (
+        !isGameOver() &&
+        userTurnActive &&
+        hitIssue(draggedHand, Number(handEl.dataset.hand)) === "would-repeat"
+      ) {
+        showToast(REPETITION_MESSAGE);
+      }
     }
   });
 
