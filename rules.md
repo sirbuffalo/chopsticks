@@ -36,5 +36,3 @@ Examples:
 ## Draws
 
 If a move creates the same position for the third time, the game is a draw.
-
-If a player has no legal move, the game is also a draw.
