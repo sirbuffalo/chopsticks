@@ -29,12 +29,10 @@ let keyboardMode = false;
 let choosingStart = true;
 let startChoiceClosing = false;
 
-const REPETITION_MESSAGE = "That position has already appeared twice.";
 const ILLEGAL_MOVE_MESSAGES = {
   "no-attacker": "You need to use a live hand.",
   dead: "You cannot tap a dead hand.",
   unchanged: "Rearrange has to change your hands.",
-  "would-repeat": REPETITION_MESSAGE,
 };
 const TURN_INDICATOR_GAME_OVER_TEXT = {
   "user-win": "You Win. Tap to Play Again.",
@@ -213,7 +211,7 @@ function hitIssue(attacker, target) {
     (state.opponent[target] + state.user[attacker]) % MODULUS;
   candidate.opponent = canonicalPair(candidate.opponent);
 
-  return wouldRepeat("bot", candidate) ? "would-repeat" : "none";
+  return "none";
 }
 
 function clearDragState() {
@@ -284,6 +282,15 @@ function finishUserTurn() {
   window.setTimeout(botTurn, 250);
 }
 
+function finishUserMoveOrDraw() {
+  if (wouldRepeat("bot", currentState())) {
+    finishGame("draw");
+    return;
+  }
+
+  finishUserTurn();
+}
+
 async function botTurn() {
   const next = await botController.nextMove();
 
@@ -300,13 +307,18 @@ async function botTurn() {
       previous.opponent,
       state.opponent,
     );
+    if (wouldRepeat("user", currentState())) {
+      finishGame("draw");
+      return;
+    }
+
     recordPosition("user");
   }
 
   if (!hasLiveHands(state, "user")) {
     finishGame("bot-win");
     return;
-  } else if (!hasLegalUserMove(state, wouldRepeat)) {
+  } else if (!hasLegalUserMove(state)) {
     finishGame("draw");
     return;
   } else {
@@ -329,7 +341,7 @@ function hitOpponent(targetEl) {
   const target = Number(targetEl.dataset.hand);
   state.opponent[target] =
     (state.opponent[target] + state.user[selectedHand]) % MODULUS;
-  finishUserTurn();
+  finishUserMoveOrDraw();
 }
 
 function toggleRearrange() {
@@ -361,13 +373,8 @@ function toggleRearrange() {
     return;
   }
 
-  if (issue === "would-repeat") {
-    showIllegalMove(issue);
-    return;
-  }
-
   rearranging = false;
-  finishUserTurn();
+  finishUserMoveOrDraw();
 }
 
 function cancelRearrange() {
@@ -393,12 +400,7 @@ function rearrangeIssue() {
     return "unchanged";
   }
 
-  return wouldRepeat("bot", {
-    user: after,
-    opponent: canonicalPair(state.opponent),
-  })
-    ? "would-repeat"
-    : "none";
+  return "none";
 }
 
 function resetGame() {
@@ -476,17 +478,6 @@ for (const handEl of ui.hands) {
   handEl.addEventListener("dragenter", () => {
     if (canDrop(handEl)) {
       ui.markDropTarget(handEl);
-      return;
-    }
-
-    if (
-      !isGameOver() &&
-      userTurnActive &&
-      selectedHand !== null &&
-      handEl.dataset.person === "opponent" &&
-      hitIssue(selectedHand, Number(handEl.dataset.hand)) === "would-repeat"
-    ) {
-      showIllegalMove(hitIssue(selectedHand, Number(handEl.dataset.hand)));
     }
   });
 

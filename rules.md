@@ -20,12 +20,21 @@ To kill, you need to make your opponent have a 5. Chopsticks is a mod 5 game, me
 
 If you tap your opponent and the sum is greater than 5, then subtract 5. For example, if you have a 3 and your opponent has a 4, you can tap their 4 with your 3 and make it a 3+4-5=2.
 
-## Special Rules
+## Rearranging
 
-You can split, merge, or rearrange on your turn instead of tapping your opponent.
+Instead of tapping, you may rearrange your own two hands as long as:
 
-- **Splitting example:** Making a 2 into a 1 and 1. This allows you to revive your hand that might be out.
-- **Merging example:** Making a 1 and 2 into a 3. You are not allowed to merge and then subtract 5. For example, if you have 3 and 3, you cannot combine into 3+3-5=1.
-- **Rearranging example:** Making a 1 and 3 into a 2 and 2. You are only allowed to rearrange to two different numbers, so making a 1 and 3 into a 3 and 1 is not allowed.
+- the total number of fingers on your two hands stays the same, and
+- the result is actually different from your current pair.
 
-If a move would create a position that has already occurred twice, it's an illegal move. If there is no legal move, it is a draw.
+Examples:
+
+- Turning `2,0` into `1,1` is allowed.
+- Turning `1,2` into `0,3` is allowed.
+- Turning `1,3` into `3,1` is not a move, because it is the same position.
+
+## Draws
+
+If a move creates the same position for the third time, the game is a draw.
+
+If a player has no legal move, the game is also a draw.

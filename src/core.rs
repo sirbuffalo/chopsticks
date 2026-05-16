@@ -430,6 +430,67 @@ pub fn best_ranked_move_for(state: State, outcomes: &HashMap<State, Evaluation>)
         .max_by_key(|candidate| move_rank(state, candidate, outcomes))
 }
 
+pub fn depth_limited_state_score(state: State, depth: u8) -> i32 {
+    pressure_search(
+        state,
+        state.turn,
+        depth,
+        &mut HashSet::new(),
+        &mut HashMap::new(),
+    )
+}
+
+fn depth_limited_scored_moves(state: State, depth: u8) -> Vec<(Move, i32)> {
+    if state.terminal().is_some() {
+        return Vec::new();
+    }
+
+    let root_player = state.turn;
+    let mut pressure_cache = HashMap::new();
+    let mut moves = state
+        .legal_moves()
+        .into_iter()
+        .map(|candidate| {
+            let score = pressure_search(
+                candidate.next,
+                root_player,
+                depth.saturating_sub(1),
+                &mut HashSet::new(),
+                &mut pressure_cache,
+            );
+            (candidate, score)
+        })
+        .collect::<Vec<_>>();
+    moves.sort_by_key(|(_, score)| *score);
+    moves.reverse();
+    moves
+}
+
+pub fn depth_limited_ranked_moves(state: State, depth: u8) -> Vec<Move> {
+    depth_limited_scored_moves(state, depth)
+        .into_iter()
+        .map(|(candidate, _)| candidate)
+        .collect()
+}
+
+pub fn depth_limited_best_move(state: State, depth: u8) -> Option<Move> {
+    depth_limited_ranked_moves(state, depth).into_iter().next()
+}
+
+pub fn depth_limited_best_tied_moves(state: State, depth: u8) -> Vec<Move> {
+    let scored_moves = depth_limited_scored_moves(state, depth);
+    let Some((_, best_score)) = scored_moves.first() else {
+        return Vec::new();
+    };
+    let best_score = *best_score;
+
+    scored_moves
+        .into_iter()
+        .take_while(|(_, score)| *score == best_score)
+        .map(|(candidate, _)| candidate)
+        .collect()
+}
+
 pub(crate) fn compare_moves_by_rank(
     state: State,
     left: &Move,
@@ -451,40 +512,55 @@ fn move_rank(state: State, candidate: &Move, outcomes: &HashMap<State, Evaluatio
             state.turn,
             POSITION_LOOKAHEAD_PLIES.saturating_sub(1),
             &mut HashSet::new(),
+            &mut HashMap::new(),
         ),
     }
 }
 
-fn pressure_search(state: State, player: usize, depth: u8, seen: &mut HashSet<State>) -> i32 {
+fn pressure_search(
+    state: State,
+    player: usize,
+    depth: u8,
+    seen: &mut HashSet<State>,
+    cache: &mut HashMap<(State, usize, u8), i32>,
+) -> i32 {
     if let Some(outcome) = state.terminal() {
         return terminal_pressure(outcome, state.turn == player);
     }
 
-    if depth == 0 || !seen.insert(state) {
+    if depth == 0 || seen.contains(&state) {
         return position_pressure(state, player);
     }
 
+    if let Some(score) = cache.get(&(state, player, depth)).copied() {
+        return score;
+    }
+
+    seen.insert(state);
     let moves = state.legal_moves();
     if moves.is_empty() {
         seen.remove(&state);
-        return position_pressure(state, player);
+        let score = position_pressure(state, player);
+        cache.insert((state, player, depth), score);
+        return score;
     }
 
     let score = if state.turn == player {
         moves
             .into_iter()
-            .map(|candidate| pressure_search(candidate.next, player, depth - 1, seen))
+            .map(|candidate| pressure_search(candidate.next, player, depth - 1, seen, cache))
             .max()
             .expect("non-empty move list should have a max")
     } else {
         moves
             .into_iter()
-            .map(|candidate| pressure_search(candidate.next, player, depth - 1, seen))
+            .map(|candidate| pressure_search(candidate.next, player, depth - 1, seen, cache))
             .min()
             .expect("non-empty move list should have a min")
     };
 
     seen.remove(&state);
+    cache.insert((state, player, depth), score);
     score
 }
 

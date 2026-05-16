@@ -2,6 +2,8 @@ import { expect, test as base } from "@playwright/test";
 
 const FONT_HOST_PATTERN = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//;
 const NO_BOT_MOVE = -1;
+const BOT_MODULE_PATH = "/bot.js";
+const RULES_MODULE_PATH = "/rules.js";
 
 const test = base.extend({
   page: async ({ page }, use) => {
@@ -84,9 +86,33 @@ async function installFakeBot(page, { nextStates, rankedByRank = {} }) {
           globalThis.__botCalls.push({ fn: "ranked", args, result });
           return result;
         },
+        chopsticks_bot_depth_limited_ranked_next_state: (...args) => {
+          const rank = args[5];
+          const result = Object.hasOwn(rankedByRank, String(rank))
+            ? rankedByRank[String(rank)]
+            : noMove;
+          globalThis.__botCalls.push({ fn: "depth-ranked", args, result });
+          return result;
+        },
+        chopsticks_depth_limited_score: (...args) => {
+          const packed =
+            args[1] | (args[2] << 4) | (args[3] << 8) | (args[4] << 12);
+          const result = globalThis.__botScores[String(packed)] ?? 0;
+          globalThis.__botCalls.push({ fn: "score", args, result });
+          return result;
+        },
+        chopsticks_outcome: (...args) => {
+          const packed =
+            args[1] | (args[2] << 4) | (args[3] << 8) | (args[4] << 12);
+          const result = globalThis.__botExactScores[String(packed)] ?? 0;
+          globalThis.__botCalls.push({ fn: "outcome", args, result });
+          return result;
+        },
       };
 
       globalThis.__botCalls = [];
+      globalThis.__botScores = {};
+      globalThis.__botExactScores = {};
       globalThis.WebAssembly.instantiateStreaming = async () => ({
         instance: { exports: fakeBot },
       });
@@ -95,6 +121,24 @@ async function installFakeBot(page, { nextStates, rankedByRank = {} }) {
       });
     },
     { nextStates, rankedByRank, noMove: NO_BOT_MOVE },
+  );
+}
+
+async function installBotScores(page, scoresByPacked) {
+  await page.addInitScript(
+    ({ scoresByPacked }) => {
+      globalThis.__botScores = scoresByPacked;
+    },
+    { scoresByPacked },
+  );
+}
+
+async function installBotExactScores(page, scoresByPacked) {
+  await page.addInitScript(
+    ({ scoresByPacked }) => {
+      globalThis.__botExactScores = scoresByPacked;
+    },
+    { scoresByPacked },
   );
 }
 
@@ -128,12 +172,15 @@ test("bot skips repeating prebuilt and ranked moves, then uses the first non-rep
       2: rankTwoAllowed,
     },
   });
+  await installBotScores(page, {
+    [rankTwoAllowed]: -1,
+  });
   await openBotHarness(page);
 
   const result = await page.evaluate(
-    async ({ state, repeatingPacked }) => {
+    async ({ state, repeatingPacked, botModulePath, rulesModulePath }) => {
       const [{ createBotController }, { packedToState, repetitionKey }] =
-        await Promise.all([import("/bot.js"), import("/rules.js")]);
+        await Promise.all([import(botModulePath), import(rulesModulePath)]);
       const repeatingKeys = new Set(
         repeatingPacked.map((packed) =>
           repetitionKey("user", packedToState(packed)),
@@ -164,22 +211,126 @@ test("bot skips repeating prebuilt and ranked moves, then uses the first non-rep
         rankZeroRepeat,
         rankOneRepeat,
       ],
+      botModulePath: BOT_MODULE_PATH,
+      rulesModulePath: RULES_MODULE_PATH,
     },
   );
 
   expect(result.next).toBe(rankTwoAllowed);
-  expect(result.wouldRepeatCalls).toHaveLength(5);
+  expect(result.wouldRepeatCalls.length).toBeGreaterThanOrEqual(4);
+  expect(result.wasmCalls.map((call) => call.fn)).toContain("ranked");
+  const rankedIndexes = result.wasmCalls
+    .filter((call) => call.fn === "ranked")
+    .map((call) => call.args[4]);
+
+  expect(rankedIndexes.slice(0, 3)).toEqual([0, 1, 2]);
+  expect(rankedIndexes).toContain(3);
+});
+
+test("bot can randomize among cached tied moves without invoking wasm search", async ({
+  page,
+}) => {
+  const state = { user: [1, 1], opponent: [1, 2] };
+  const prebuiltDraw = pack([1, 4], [1, 2]);
+  const alternateDraw = pack([2, 3], [1, 2]);
+
+  await mockBotCache(page, [["1,1:1,2", [prebuiltDraw, alternateDraw]]]);
+  await installFakeBot(page, {
+    nextStates: [pack([0, 4], [1, 2])],
+    rankedByRank: {
+      0: pack([2, 3], [1, 2]),
+    },
+  });
+  await openBotHarness(page);
+
+  const result = await page.evaluate(
+    async ({ state, botModulePath }) => {
+      const realRandom = Math.random;
+      Math.random = () => 0.99;
+
+      try {
+        const [{ createBotController }] = await Promise.all([
+          import(botModulePath),
+        ]);
+        const controller = createBotController({
+          state,
+          repetitionCounts: new Map(),
+          wouldRepeat: () => false,
+        });
+
+        return {
+          next: await controller.nextMove(),
+          wasmCalls: globalThis.__botCalls,
+        };
+      } finally {
+        Math.random = realRandom;
+      }
+    },
+    { state, botModulePath: BOT_MODULE_PATH },
+  );
+
+  expect(result.next).toBe(alternateDraw);
   expect(result.wasmCalls.map((call) => call.fn)).toEqual([
-    "next",
     "ranked",
     "ranked",
-    "ranked",
+    "outcome",
+    "outcome",
   ]);
-  expect(
-    result.wasmCalls
-      .filter((call) => call.fn === "ranked")
-      .map((call) => call.args[4]),
-  ).toEqual([0, 1, 2]);
+});
+
+test("bot avoids a user-winning ranked branch when exact draw outcomes exist", async ({
+  page,
+}) => {
+  const state = { user: [1, 1], opponent: [1, 2] };
+  const drawA = pack([1, 1], [0, 3]);
+  const drawB = pack([1, 2], [1, 2]);
+  const losingMove = pack([1, 3], [1, 2]);
+
+  await mockBotCache(page, []);
+  await installFakeBot(page, {
+    nextStates: [drawA],
+    rankedByRank: {
+      0: drawA,
+      1: drawB,
+      2: losingMove,
+    },
+  });
+  await installBotExactScores(page, {
+    [drawA]: 0,
+    [drawB]: 0,
+    [losingMove]: 1,
+  });
+  await openBotHarness(page);
+
+  const result = await page.evaluate(
+    async ({ state, botModulePath }) => {
+      const realRandom = Math.random;
+      Math.random = () => 0.99;
+
+      try {
+        const [{ createBotController }] = await Promise.all([
+          import(botModulePath),
+        ]);
+        const controller = createBotController({
+          state,
+          repetitionCounts: new Map(),
+          wouldRepeat: () => false,
+        });
+
+        return {
+          next: await controller.nextMove(),
+          wasmCalls: globalThis.__botCalls,
+        };
+      } finally {
+        Math.random = realRandom;
+      }
+    },
+    { state, botModulePath: BOT_MODULE_PATH },
+  );
+
+  expect(result.next).toBe(drawB);
+  expect(result.next).not.toBe(losingMove);
+  expect(result.wasmCalls.map((call) => call.fn)).toContain("outcome");
 });
 
 test("app declares a draw when no ranked bot move avoids repetition", async ({
@@ -196,6 +347,7 @@ test("app declares a draw when no ranked bot move avoids repetition", async ({
     },
   });
   await page.goto("/");
+  await page.getByRole("button", { name: "Yes" }).click();
 
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
@@ -206,14 +358,10 @@ test("app declares a draw when no ranked bot move avoids repetition", async ({
   await hand(page, "user", 0).click();
   await hand(page, "opponent", 0).click();
 
-  await expect(page.locator(".banner-title")).toHaveText("Draw.");
-  await expect(page.locator(".play-again")).toBeFocused();
+  await expect(page.locator(".turn-indicator")).toHaveText(
+    "Draw. Tap to Play Again.",
+  );
 
   const wasmCalls = await page.evaluate(() => globalThis.__botCalls);
-  expect(wasmCalls.map((call) => call.fn)).toEqual([
-    "next",
-    "next",
-    "ranked",
-    "ranked",
-  ]);
+  expect(wasmCalls.map((call) => call.fn)).toContain("depth-ranked");
 });

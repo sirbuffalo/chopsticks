@@ -5,8 +5,9 @@ mod core;
 
 pub use core::{
     Evaluation, MODULUS, Move, MoveKind, Outcome, SolveProgress, State, best_move_for,
-    best_ranked_move_for, reachable_graph, reachable_graph_with_progress, solve_outcomes,
-    solve_outcomes_with_progress,
+    best_ranked_move_for, depth_limited_best_move, depth_limited_best_tied_moves,
+    depth_limited_ranked_moves, depth_limited_state_score, reachable_graph,
+    reachable_graph_with_progress, solve_outcomes, solve_outcomes_with_progress,
 };
 
 thread_local! {
@@ -190,6 +191,94 @@ pub extern "C" fn chopsticks_bot_ranked_next_state(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn chopsticks_bot_depth_limited_next_state(
+    user_left: u32,
+    user_right: u32,
+    opponent_left: u32,
+    opponent_right: u32,
+    depth: u32,
+) -> u32 {
+    let state = State::new(
+        1,
+        [
+            [clamp_hand(user_left), clamp_hand(user_right)],
+            [clamp_hand(opponent_left), clamp_hand(opponent_right)],
+        ],
+    );
+
+    depth_limited_best_move(state, clamp_depth(depth))
+        .map(|best_move| pack_hands(best_move.next.hands))
+        .unwrap_or(u32::MAX)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn chopsticks_bot_depth_limited_ranked_next_state(
+    user_left: u32,
+    user_right: u32,
+    opponent_left: u32,
+    opponent_right: u32,
+    depth: u32,
+    rank: u32,
+) -> u32 {
+    let state = State::new(
+        1,
+        [
+            [clamp_hand(user_left), clamp_hand(user_right)],
+            [clamp_hand(opponent_left), clamp_hand(opponent_right)],
+        ],
+    );
+
+    depth_limited_ranked_moves(state, clamp_depth(depth))
+        .get(rank as usize)
+        .map(|best_move| pack_hands(best_move.next.hands))
+        .unwrap_or(u32::MAX)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn chopsticks_bot_depth_limited_random_tied_next_state(
+    user_left: u32,
+    user_right: u32,
+    opponent_left: u32,
+    opponent_right: u32,
+    depth: u32,
+    seed: u32,
+) -> u32 {
+    let state = State::new(
+        1,
+        [
+            [clamp_hand(user_left), clamp_hand(user_right)],
+            [clamp_hand(opponent_left), clamp_hand(opponent_right)],
+        ],
+    );
+    let tied_moves = depth_limited_best_tied_moves(state, clamp_depth(depth));
+
+    tied_moves
+        .get((seed as usize) % tied_moves.len().max(1))
+        .map(|best_move| pack_hands(best_move.next.hands))
+        .unwrap_or(u32::MAX)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn chopsticks_depth_limited_score(
+    turn: u32,
+    user_left: u32,
+    user_right: u32,
+    opponent_left: u32,
+    opponent_right: u32,
+    depth: u32,
+) -> i32 {
+    let state = State::new(
+        if turn == 0 { 0 } else { 1 },
+        [
+            [clamp_hand(user_left), clamp_hand(user_right)],
+            [clamp_hand(opponent_left), clamp_hand(opponent_right)],
+        ],
+    );
+
+    depth_limited_state_score(state, clamp_depth(depth))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn chopsticks_bot_outcome(
     user_left: u32,
     user_right: u32,
@@ -198,6 +287,29 @@ pub extern "C" fn chopsticks_bot_outcome(
 ) -> i32 {
     let state = State::new(
         1,
+        [
+            [clamp_hand(user_left), clamp_hand(user_right)],
+            [clamp_hand(opponent_left), clamp_hand(opponent_right)],
+        ],
+    );
+
+    match best_move(state).0.outcome {
+        Outcome::Win => 1,
+        Outcome::Draw => 0,
+        Outcome::Loss => -1,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn chopsticks_outcome(
+    turn: u32,
+    user_left: u32,
+    user_right: u32,
+    opponent_left: u32,
+    opponent_right: u32,
+) -> i32 {
+    let state = State::new(
+        if turn == 0 { 0 } else { 1 },
         [
             [clamp_hand(user_left), clamp_hand(user_right)],
             [clamp_hand(opponent_left), clamp_hand(opponent_right)],
@@ -223,6 +335,10 @@ pub extern "C" fn chopsticks_bot_clear_cache() {
 
 fn clamp_hand(value: u32) -> u8 {
     value.min(u32::from(MODULUS - 1)) as u8
+}
+
+fn clamp_depth(value: u32) -> u8 {
+    value.min(u32::from(u8::MAX)) as u8
 }
 
 fn pack_hands(hands: [[u8; 2]; 2]) -> u32 {

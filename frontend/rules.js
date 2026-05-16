@@ -51,7 +51,7 @@ export function packedToState(packed) {
   };
 }
 
-export function hasLegalUserMove(state, repeats) {
+export function hasLegalUserMove(state) {
   if (!hasLiveHands(state, "user") || !hasLiveHands(state, "opponent")) {
     return false;
   }
@@ -72,9 +72,7 @@ export function hasLegalUserMove(state, repeats) {
       candidate.opponent[target] = (before + amount) % MODULUS;
       candidate.opponent = canonicalPair(candidate.opponent);
 
-      if (!repeats("bot", candidate)) {
-        return true;
-      }
+      return true;
     }
   }
 
@@ -86,11 +84,7 @@ export function hasLegalUserMove(state, repeats) {
       const after = [left, right];
       if (
         left + right === total &&
-        (after[0] !== before[0] || after[1] !== before[1]) &&
-        !repeats("bot", {
-          user: after,
-          opponent: canonicalPair(state.opponent),
-        })
+        (after[0] !== before[0] || after[1] !== before[1])
       ) {
         return true;
       }

@@ -56,32 +56,16 @@ test("hasLegalUserMove is false for terminal dead-hand states", () => {
   );
 });
 
-test("hasLegalUserMove is true when a hit avoids repetition", () => {
-  assert.equal(
-    hasLegalUserMove({ user: [1, 0], opponent: [1, 0] }, () => false),
-    true,
-  );
+test("hasLegalUserMove is true when a hit exists", () => {
+  assert.equal(hasLegalUserMove({ user: [1, 0], opponent: [1, 0] }), true);
 });
 
-test("hasLegalUserMove is true when a split avoids repetition", () => {
-  const repeatingHitKey = repetitionKey("bot", {
-    user: [1, 1],
-    opponent: [0, 2],
-  });
-
-  assert.equal(
-    hasLegalUserMove({ user: [1, 1], opponent: [1, 0] }, (turn, candidate) => {
-      return repetitionKey(turn, candidate) === repeatingHitKey;
-    }),
-    true,
-  );
+test("hasLegalUserMove is true when a split exists", () => {
+  assert.equal(hasLegalUserMove({ user: [1, 1], opponent: [1, 0] }), true);
 });
 
-test("hasLegalUserMove is false when every hit and split repeats", () => {
-  assert.equal(
-    hasLegalUserMove({ user: [1, 1], opponent: [1, 1] }, () => true),
-    false,
-  );
+test("hasLegalUserMove ignores repetition because repeated positions draw", () => {
+  assert.equal(hasLegalUserMove({ user: [1, 1], opponent: [1, 1] }), true);
 });
 
 test("packed hand helpers preserve the Rust and JS u16 nibble contract", () => {
