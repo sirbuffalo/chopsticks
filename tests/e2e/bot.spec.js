@@ -274,7 +274,9 @@ test("bot can randomize among cached tied moves without invoking wasm search", a
     "ranked",
     "ranked",
     "outcome",
+    "score",
     "outcome",
+    "score",
   ]);
 });
 
@@ -330,6 +332,62 @@ test("bot avoids a user-winning ranked branch when exact draw outcomes exist", a
 
   expect(result.next).toBe(drawB);
   expect(result.next).not.toBe(losingMove);
+  expect(result.wasmCalls.map((call) => call.fn)).toContain("outcome");
+});
+
+test("bot prefers an exact winning move over an exact drawing move", async ({
+  page,
+}) => {
+  const state = { user: [0, 1], opponent: [0, 3] };
+  const winningMove = pack([0, 0], [0, 4]);
+  const drawingMove = pack([0, 1], [0, 3]);
+
+  await mockBotCache(page, [["0,1:0,3", [drawingMove, winningMove]]]);
+  await installFakeBot(page, {
+    nextStates: [drawingMove],
+    rankedByRank: {
+      0: drawingMove,
+      1: winningMove,
+    },
+  });
+  await installBotScores(page, {
+    [winningMove]: 50,
+    [drawingMove]: 0,
+  });
+  await installBotExactScores(page, {
+    [winningMove]: -1,
+    [drawingMove]: 0,
+  });
+  await openBotHarness(page);
+
+  const result = await page.evaluate(
+    async ({ state, botModulePath }) => {
+      const realRandom = Math.random;
+      Math.random = () => 0;
+
+      try {
+        const [{ createBotController }] = await Promise.all([
+          import(botModulePath),
+        ]);
+        const controller = createBotController({
+          state,
+          repetitionCounts: new Map(),
+          wouldRepeat: () => false,
+        });
+
+        return {
+          next: await controller.nextMove(),
+          wasmCalls: globalThis.__botCalls,
+        };
+      } finally {
+        Math.random = realRandom;
+      }
+    },
+    { state, botModulePath: BOT_MODULE_PATH },
+  );
+
+  expect(result.next).toBe(winningMove);
+  expect(result.next).not.toBe(drawingMove);
   expect(result.wasmCalls.map((call) => call.fn)).toContain("outcome");
 });
 

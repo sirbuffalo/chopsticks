@@ -157,6 +157,34 @@ export function createBotController({ state, repetitionCounts, wouldRepeat }) {
     return null;
   }
 
+  function pickBestExactCandidates(bot, candidates, searchDepth) {
+    let bestOutcome = Number.NEGATIVE_INFINITY;
+    let bestHeuristic = Number.NEGATIVE_INFINITY;
+    let bestCandidates = [];
+
+    for (const packed of candidates) {
+      const outcome = exactOutcomeScore(bot, packed);
+      if (outcome === null) {
+        continue;
+      }
+
+      const heuristic = candidateScore(bot, packed, searchDepth);
+
+      if (
+        outcome > bestOutcome ||
+        (outcome === bestOutcome && heuristic > bestHeuristic)
+      ) {
+        bestOutcome = outcome;
+        bestHeuristic = heuristic;
+        bestCandidates = [packed];
+      } else if (outcome === bestOutcome && heuristic === bestHeuristic) {
+        bestCandidates.push(packed);
+      }
+    }
+
+    return bestCandidates;
+  }
+
   function gatherExactRankedCandidates(bot) {
     if (
       !bot.chopsticks_bot_ranked_next_state ||
@@ -209,23 +237,11 @@ export function createBotController({ state, repetitionCounts, wouldRepeat }) {
     const exactCandidates = [...new Set([...prebuiltAllowed, ...exactRanked])];
 
     if (exactCandidates.length > 0) {
-      let bestExactScore = Number.NEGATIVE_INFINITY;
-      let bestExactCandidates = [];
-
-      for (const packed of exactCandidates) {
-        const score = exactOutcomeScore(bot, packed);
-        if (score === null) {
-          continue;
-        }
-
-        if (score > bestExactScore) {
-          bestExactScore = score;
-          bestExactCandidates = [packed];
-        } else if (score === bestExactScore) {
-          bestExactCandidates.push(packed);
-        }
-      }
-
+      const bestExactCandidates = pickBestExactCandidates(
+        bot,
+        exactCandidates,
+        searchDepth,
+      );
       if (bestExactCandidates.length > 0) {
         const choice = pickRandom(bestExactCandidates);
         cacheBotMove(historyKey, choice);
